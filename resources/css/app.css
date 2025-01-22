@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    @apply bg-gray-50;
+}
+
+.card {
+    @apply p-6 bg-white rounded-md shadow-sm hover:shadow-md transition-shadow duration-300 dark:bg-slate-800;
+}
+
+.card-title {
+    @apply text-lg font-bold dark:text-slate-100 mb-5;
+}
+
+.card-content {
+    @apply text-base dark:text-slate-100;
+}
+
+.link {
+    @apply text-slate-900 hover:text-red-500 focus:outline-none focus:text-red-500 dark:text-slate-100 dark:hover:text-red-500 dark:focus:text-red-500;
+}
+
+.link.active {
+    @apply !text-red-500 dark:!text-red-500;
+}
+
+.primary {
+    @apply !text-red-500 dark:!text-red-500;
+}
+
+.secondary {
+    @apply !text-slate-500 dark:!text-slate-400;
+}
+
+.secondary.link {
+    @apply !text-slate-500 hover:!text-red-500 focus:outline-none focus:!text-red-500 dark:!text-slate-400 dark:hover:!text-red-500 dark:focus:!text-red-500;
+}
+
+.primary.link {
+    @apply text-red-500 hover:text-red-500 focus:outline-none focus:text-red-500;
+}
+
+.badge {
+    @apply inline-flex items-center justify-center my-1 gap-x-1.5 py-1 px-2.5 rounded-md text-sm font-medium border border-slate-300 text-slate-800 dark:border-slate-500 dark:text-white;
+}
