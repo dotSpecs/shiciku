@@ -23,17 +23,17 @@
 
     <link rel="canonical" href="{{ url()->current() }}">
     <link rel="shortcut icon" href="https://cdn.meirishici.com/meirishici-favicon.ico" />
-    <link rel="apple-touch-icon" href="https://cdn.meirishici.com/assets/images/logo/shiciwenku-mini.png" sizes="144x144"/>
+    <link rel="apple-touch-icon" href="https://cdn.meirishici.com/assets/images/logo/shiciwenku-mini.png" sizes="144x144" />
 
     <!-- Facebook & LinkedIn Open Graph Tags -->
-    <meta property="og:title" content="@yield('title') - 古诗词文库"/>
+    <meta property="og:title" content="@yield('title') - 古诗词文库" />
     <meta property="og:url" content="{{ url()->current() }}" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="古诗词文库" />
     <meta property="og:image" content="https://cdn.meirishici.com/assets/images/logo/shiciwenku.png" />
     <meta property="og:description" content="古诗词文库是一个古诗词、古文收录网站，目前已收录古诗词超60万首，作者2万余人。其中包含唐诗/宋词/元曲/诸子百家等多种著作，内容持续优化更新中。" />
     <!-- Twitter Card Tags -->
-    <meta property="twitter:title" content="@yield('title') - 古诗词文库"/>
+    <meta property="twitter:title" content="@yield('title') - 古诗词文库" />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:site" content="@NeverMore2oo8" />
     <meta name="twitter:image" content="https://cdn.meirishici.com/assets/images/logo/shiciwenku.png" />
@@ -74,6 +74,16 @@
     </footer>
 
     @yield('script')
+
+    <script>
+        var _hmt = _hmt || [];
+        (function() {
+            var hm = document.createElement("script");
+            hm.src = "https://hm.baidu.com/hm.js?556d44992450c9c3effc976d52979983";
+            var s = document.getElementsByTagName("script")[0];
+            s.parentNode.insertBefore(hm, s);
+        })();
+    </script>
 
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6074386496019881" crossorigin="anonymous"></script>
     <!-- 古诗词文库 -->
