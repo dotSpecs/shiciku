@@ -64,7 +64,7 @@
 
 
 @section('sidebar')
-@if($poem->author->author_id)
+@if($poem->author)
 <x-sidebar.author-poem :author-id="$poem->author->author_id" class="mb-8" />
 @endif
 <x-sidebar.hot-author limit="5" class="mb-8" />
