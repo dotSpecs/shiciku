@@ -1,8 +1,8 @@
 <div  {{ $attributes->merge(['class' => 'card']) }}>
-    <h1 class="card-title flex items-center justify-between">
+    <h2 class="card-title flex items-center justify-between">
         <span class="underline underline-offset-8 ">热门诗词</span>
         <a href="{{ route('poem.index') }}" class="link text-sm primary">更多 +</a>
-    </h1>
+    </h2>
     <div class="card-content grid grid-cols-1 divide-y divide-gray-200 dark:divide-slate-600">
         @foreach ($poems as $poem)
         <div class="poem-card py-8">

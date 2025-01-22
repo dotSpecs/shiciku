@@ -26,7 +26,7 @@
 </div>
 
 <div class="card @if($article->metadatas->count() > 0) mb-8 @endif">
-    <h1 class="card-title text-xl">{{ $article->book->name . ' · ' . ($article->chapter && $article->chapter->name ? $article->chapter->name. ' · ' : '') . $article->name . '原文' }}</h1>
+    <h2 class="card-title text-xl">{{ $article->book->name . ' · ' . ($article->chapter && $article->chapter->name ? $article->chapter->name. ' · ' : '') . $article->name . '原文' }}</h2>
     <div class="card-content escape-html leading-10 [&>p]:mb-6">
         {!! $article->content !!}
     </div>
