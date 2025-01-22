@@ -14,7 +14,7 @@
     <meta http-equiv="content-type" content="text/html;charset=utf-8">
     <meta name="theme-color" content="#FFFFFF" />
     <meta name="author" content="Specs">
-    <meta name="baidu-site-verification" content="IVdCOjnYcn" />
+    <meta name="baidu-site-verification" content="codeva-T3HNzwpUTs" />
     <meta name="baidu_union_verify" content="fdc73309de255e6b8c25cbf4db0e52de">
 
     <meta name="keywords" content="@yield('keywords')古诗词文库,古诗,诗词,古文,唐诗,宋词,古文,诗,词,曲,赋,文,诗人" />
@@ -60,6 +60,13 @@
         <div class="sidebar sm:w-full md:w-4/12 relative">
             <div class="sticky top-24">
                 @yield('sidebar')
+
+                <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6074386496019881" crossorigin="anonymous"></script>
+                <!-- 古诗词文库 -->
+                <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6074386496019881" data-ad-slot="6822112578" data-ad-format="auto" data-full-width-responsive="true"></ins>
+                <script>
+                    (adsbygoogle = window.adsbygoogle || []).push({});
+                </script>
             </div>
         </div>
     </div>
@@ -82,13 +89,6 @@
             var s = document.getElementsByTagName("script")[0];
             s.parentNode.insertBefore(hm, s);
         })();
-    </script>
-
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6074386496019881" crossorigin="anonymous"></script>
-    <!-- 古诗词文库 -->
-    <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6074386496019881" data-ad-slot="6822112578" data-ad-format="auto" data-full-width-responsive="true"></ins>
-    <script>
-        (adsbygoogle = window.adsbygoogle || []).push({});
     </script>
 </body>
 
