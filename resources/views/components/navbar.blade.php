@@ -30,7 +30,36 @@
                     <a class="font-medium @if(request()->segment(1) == 'author') active @endif link" href="{{ route('author.index') }}">作者</a>
                     <a class="font-medium @if(request()->segment(1) == 'book') active @endif link" href="{{ route('book.index') }}">古籍</a>
                 </div>
-                <div class="flex flex-col gap-5 mt-5 sm:flex-row sm:items-center sm:mt-0">
+                <div class="flex flex-col gap-5 mt-5 sm:flex-row sm:items-center sm:mt-0 ">
+                    <div class="relative flex rounded-lg shadow-sm w-full sm:w-auto">
+                        <input type="text" @if(request()->segment(2) == 'search') value="{{ request()->input('query') }}" @endif id="search-input" name="search-input" class="py-2 px-3 ps-11 block w-full border border-slate-200 shadow-sm rounded-s-lg text-sm focus:z-10 focus:border-slate-500 focus:outline-none disabled:opacity-50 disabled:pointer-events-none dark:bg-slate-800 dark:border-slate-600 dark:text-slate-400 dark:focus:border-slate-500" placeholder="搜索诗词、作者..." @keydown.enter="handleSearch">
+                        <div class="absolute inset-y-0 start-0 flex items-center pointer-events-none z-20 ps-4">
+                            <svg class="shrink-0 size-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.3-4.3"></path>
+                            </svg>
+                        </div>
+                        <button type="button" onclick="handleSearch()" class="-ms-px py-2 px-4 inline-flex whitespace-nowrap justify-center items-center text-sm font-medium rounded-e-lg border border-slate-600 bg-slate-600 text-white hover:bg-slate-700 hover:border-slate-700 focus:outline-none dark:focus:ring-offset-slate-800">搜索</button>
+                    </div>
+
+                    <script>
+                        function handleSearch() {
+                            const searchInput = document.getElementById('search-input');
+                            const query = searchInput.value.trim();
+
+                            if (query) {
+                                window.location.href = `{{ route('search') }}?query=${encodeURIComponent(query)}`;
+                            }
+                        }
+
+                        // 监听回车键
+                        document.getElementById('search-input').addEventListener('keydown', function(e) {
+                            if (e.key === 'Enter') {
+                                handleSearch();
+                            }
+                        });
+                    </script>
+
                     <div class="hs-dropdown">
                         <button id="hs-dropdown-dark-mode" type="button" class="hs-dropdown-toggle hs-dark-mode group flex items-center link" aria-haspopup="menu" aria-expanded="false" aria-label="Dropdown">
                             <svg class="hs-dark-mode-active:hidden block size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

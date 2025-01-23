@@ -108,4 +108,104 @@ class PoemController extends Controller
 
         return view('web.poem.show', compact('poem'));
     }
+
+    public function search(Request $request)
+    {
+        $query = $request->get('query', '');
+        $type = $request->get('type', 'poem');
+        $page = $request->get('page', 1);
+
+        if ($page > 10) {
+            return redirect()->route('poem.index');
+        }
+
+        if (!$query) {
+            return redirect()->route('poem.index');
+        }
+
+        $authors = $type === 'author' ? Author::query()
+            ->select(['author_id', 'name', 'dynasty_id', 'pic', 'content'])
+            ->with('dynasty')
+            ->withCount('poems')
+            ->where('name', 'like', '%' . $query . '%')
+            ->orderByDesc('priority')
+            ->simplePaginate()
+            ->withQueryString() : null;
+
+        $searchQuery = [
+            'function_score' => [
+                'query' => [
+                    'bool' => [
+                        'should' => [
+                            [
+                                'constant_score' => [
+                                    'filter' => [
+                                        'match_phrase' => [
+                                            'content' => [
+                                                'query' => $query
+                                            ]
+                                        ]
+                                    ],
+                                    'boost' => 90  // 大幅提高完整短语匹配的权重
+                                ]
+                            ],
+                            [
+                                'constant_score' => [
+                                    'filter' => [
+                                        'match_phrase' => [
+                                            'name' => [
+                                                'query' => $query
+                                            ]
+                                        ]
+                                    ],
+                                    'boost' => 50
+                                ]
+                            ],
+                            [
+                                'match' => [
+                                    'content' => [
+                                        'query' => $query,
+                                        'boost' => 5,
+                                        'minimum_should_match' => '75%',  // 提高最小匹配度要求
+                                        'operator' => 'and'  // 要求所有词都匹配
+                                    ]
+                                ]
+                            ],
+                            [
+                                'match' => [
+                                    'name' => [
+                                        'query' => $query,
+                                        'boost' => 2
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ]
+                ],
+                'score_mode' => 'sum',
+                'boost_mode' => 'sum',
+                'functions' => [
+                    [
+                        'gauss' => [
+                            'id' => [
+                                'origin' => '1',
+                                'scale' => '1000',
+                                'decay' => 0.9
+                            ]
+                        ],
+                        'weight' => 0.0001
+                    ]
+                ]
+            ]
+        ];
+        $poems = $type === 'poem' ? Poem::searchQuery($searchQuery)
+            ->paginate(15)
+            ->onlyModels()
+            ->through(function ($poem) {
+                return $poem->load(['author', 'dynasty']);
+            })->withQueryString() : null;
+
+
+        return view('web.poem.search', compact('poems', 'authors', 'type', 'query', 'page'));
+    }
 }
