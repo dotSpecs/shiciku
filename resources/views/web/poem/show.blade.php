@@ -33,7 +33,7 @@
         <div class="poem-content escape-html leading-10 [&>p]:mb-6">{!! $poem->content !!}</div>
         <div class="poem-yizhu-content escape-html leading-10 [&>p]:mb-6 hidden">{!! $poem->yizhu !!}</div>
     </div>
-    <div class="card-content poem-tags mt-4" @if($poem->tags->isEmpty()) style="display: none;" @endif>
+    <div class="card-content poem-tags mt-8" @if($poem->tags->isEmpty()) style="display: none;" @endif>
         所属合集：
         @foreach ($poem->tags as $tag)
         <a href="{{ route('poem.index', ['tag_id' => $tag->id]) }}" class="link badge">{{ $tag->name }}</a>
