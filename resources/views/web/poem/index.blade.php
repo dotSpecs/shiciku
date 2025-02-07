@@ -65,7 +65,7 @@
     </div> -->
 </div>
 
-<div class="container mx-auto">
+<div class="mx-auto">
     @foreach ($poems as $poem)
     <div class="poem card mb-8">
         <h1 class="poem-name card-title">
