@@ -50,14 +50,14 @@
 
 <body class="text-base bg-gray-50 dark:bg-slate-900 dark:text-slate-100">
     <x-navbar></x-navbar>
-    <div class="max-w-[85rem] w-full mx-auto px-4 py-8 md:flex space-x-4">
+    <div class="max-w-[85rem] w-full mx-auto px-4 py-8 md:flex md:space-x-4">
         <!-- 主体内容 占比 80% -->
         <div class="main sm:w-full md:w-8/12">
             @yield('content')
         </div>
 
         <!-- 侧边栏 占比 20% -->
-        <div class="sidebar sm:w-full md:w-4/12 relative">
+        <div class="sidebar sm:w-full md:w-4/12 relative pt-8 md:pt-0">
             <div class="sticky top-24">
                 @yield('sidebar')
 
