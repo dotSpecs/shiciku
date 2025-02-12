@@ -61,12 +61,11 @@
             <div class="sticky top-24">
                 @yield('sidebar')
 
-                <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6074386496019881" crossorigin="anonymous"></script>
-                <!-- 古诗词文库 -->
-                <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6074386496019881" data-ad-slot="6822112578" data-ad-format="auto" data-full-width-responsive="true"></ins>
+                <!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6074386496019881" crossorigin="anonymous"></script> -->
+                <!-- <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6074386496019881" data-ad-slot="6822112578" data-ad-format="auto" data-full-width-responsive="true"></ins>
                 <script>
                     (adsbygoogle = window.adsbygoogle || []).push({});
-                </script>
+                </script> -->
             </div>
         </div>
     </div>
