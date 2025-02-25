@@ -42,7 +42,8 @@
     <meta itemprop="image" content="https://cdn.meirishici.com/assets/images/logo/shiciwenku.png" />
     <meta itemprop="description" content="古诗词文库是一个古诗词、古文收录网站，目前已收录古诗词超60万首，作者2万余人。其中包含唐诗/宋词/元曲/诸子百家等多种著作，内容持续优化更新中。" />
 
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-BGEFGH5VHW"></script>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q2LNVP0T85"></script>
     <script>
         window.dataLayer = window.dataLayer || [];
 
@@ -51,7 +52,7 @@
         }
         gtag('js', new Date());
 
-        gtag('config', 'G-BGEFGH5VHW');
+        gtag('config', 'G-Q2LNVP0T85');
     </script>
 
     @yield('seo')
