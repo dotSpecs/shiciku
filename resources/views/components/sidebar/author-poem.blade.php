@@ -6,7 +6,7 @@
     <div class="card-content">
         <ul class="marker:text-red-500 list-disc ps-5 space-y-2 ">
             @foreach ($poems as $poem)
-            <li class="quote"><a href="{{ route('poem.show', $poem->poem_id) }}" class="link">{{ $poem->name }}</a></li>
+            <li class="quote"><a href="{{ route('poem.show', poem_slug($poem)) }}" class="link">{{ $poem->name }}</a></li>
             @endforeach
         </ul>
     </div>

@@ -12,7 +12,7 @@ Route::get('/', [IndexController::class, 'index'])->name('index');
 
 Route::get('/poem', [PoemController::class, 'index'])->name('poem.index');
 Route::get('/poem/search', [PoemController::class, 'search'])->name('search');
-Route::get('/poem/{poem_id}', [PoemController::class, 'show'])->name('poem.show');
+Route::get('/poem/{slug}', [PoemController::class, 'show'])->name('poem.show');
 
 Route::get('/author', [AuthorController::class, 'index'])->name('author.index');
 Route::get('/author/{author_id}', [AuthorController::class, 'show'])->name('author.show');

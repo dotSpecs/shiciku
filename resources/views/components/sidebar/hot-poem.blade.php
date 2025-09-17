@@ -6,7 +6,7 @@
     <div class="card-content grid grid-cols-1 divide-y divide-gray-200 dark:divide-slate-600">
         @foreach ($poems as $poem)
         <div class="poem-card py-8">
-            <h2 class="text-lg"><a class="link" href="{{ route('poem.show', $poem->poem_id) }}">{{ $poem->name }}</a></h2>
+            <h2 class="text-lg"><a class="link" href="{{ route('poem.show', poem_slug($poem)) }}">{{ $poem->name }}</a></h2>
             <div class="secondary my-3">
             @if($poem->dynasty)
                 <a href="{{ route('poem.index', ['dynasty_id' => $poem->dynasty->id]) }}" class="link secondary">

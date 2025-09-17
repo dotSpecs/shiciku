@@ -96,14 +96,28 @@ class PoemController extends Controller
         return view('web.poem.index', compact('poems', 'dynasties', 'tags', 'authors', 'forms', 'author', 'dynasty', 'tag', 'page'));
     }
 
-    public function show($poem_id)
+    public function show($slug)
     {
-        $poem = Poem::where('poem_id', $poem_id)
-            ->with(['author', 'dynasty', 'tags', 'quotes', 'metadatas'])
-            ->first();
+        $parts = explode('-', $slug);
+        $poem_id = $parts[0] ?? null;
+        $name = $parts[1] ?? null;
+
+        if (empty($poem_id) || empty($name)) {
+            return redirect()->route('poem.index');
+        }
+
+        $poem = Cache::remember('poem-of-' . $poem_id, 300, function () use ($poem_id) {
+            return Poem::where('poem_id', $poem_id)
+                ->with(['author', 'dynasty', 'tags', 'quotes', 'metadatas'])
+                ->first();
+        });
 
         if (!$poem) {
             return redirect()->route('poem.index');
+        }
+
+        if ($name != name2slug($poem->name)) {
+            return redirect()->route('poem.show', poem_slug($poem));
         }
 
         return view('web.poem.show', compact('poem'));

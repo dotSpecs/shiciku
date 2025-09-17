@@ -9,9 +9,9 @@
 @section('content')
 <div class="poem card mb-8">
     <h1 class="poem-name card-title flex items-center justify-between">
-        <a href="{{ route('poem.show', $poem->poem_id) }}" class="link text-xl">
+        {{-- <a href="{{ route('poem.show', poem_slug($poem)) }}" class="link text-xl"> --}}
             {{ $poem->name }}
-        </a>
+        {{-- </a> --}}
 
         <span class="badge cursor-pointer @if(empty($poem->yizhu)) !hidden @endif" onclick="toggleYizhu()">译注</span>
     </h1>

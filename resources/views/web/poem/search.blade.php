@@ -53,7 +53,7 @@
 @foreach ($poems as $poem)
 <div class="poem card mb-8">
     <h1 class="poem-name card-title">
-        <a href="{{ route('poem.show', $poem->poem_id) }}" class="link">
+        <a href="{{ route('poem.show', poem_slug($poem)) }}" class="link">
             {{ $poem->name }}
         </a>
     </h1>
