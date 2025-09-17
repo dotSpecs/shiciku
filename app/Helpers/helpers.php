@@ -9,5 +9,7 @@ function poem_slug(Poem $poem)
 
 function name2slug($name)
 {
-    return str_replace([' ', '/', '-'], ['', '_', '_'], $name);
+    $name = str_replace([' ', '/', '-'], ['', '_', '_'], $name);
+
+    return mb_substr($name, 0, 60);
 }
