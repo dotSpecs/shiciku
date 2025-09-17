@@ -102,7 +102,7 @@ class PoemController extends Controller
         $poem_id = $parts[0] ?? null;
         $name = $parts[1] ?? null;
 
-        if (empty($poem_id) || empty($name)) {
+        if (empty($poem_id)) {
             return redirect()->route('poem.index');
         }
 
