@@ -42,6 +42,7 @@
     <meta itemprop="image" content="https://cdn.meirishici.com/assets/images/logo/shiciwenku.png" />
     <meta itemprop="description" content="古诗词文库是一个古诗词、古文收录网站，目前已收录古诗词超60万首，作者2万余人。其中包含唐诗/宋词/元曲/诸子百家等多种著作，内容持续优化更新中。" />
 
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6074386496019881" crossorigin="anonymous"></script>
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q2LNVP0T85"></script>
     <script>
@@ -74,7 +75,6 @@
             <div class="sticky top-24">
                 @yield('sidebar')
 
-                <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6074386496019881" crossorigin="anonymous"></script>
                 {{-- <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6074386496019881" data-ad-slot="6822112578" data-ad-format="auto" data-full-width-responsive="true"></ins>
                 <script>
                     (adsbygoogle = window.adsbygoogle || []).push({});
