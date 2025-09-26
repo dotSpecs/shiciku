@@ -20,7 +20,7 @@ class Poem extends Model
     public function author()
     {
         return $this->belongsTo(Author::class, 'author_id', 'id')
-            ->select('authors.id', 'authors.author_id', 'authors.name');
+            ->select('authors.id', 'authors.pic', 'authors.author_id', 'authors.name', 'authors.content');
     }
 
     public function dynasty()

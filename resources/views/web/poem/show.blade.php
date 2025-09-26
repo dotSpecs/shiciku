@@ -55,7 +55,7 @@
 @endif
 
 @foreach ($poem->metadatas as $metadata)
-<div class="poem-metadata card @if(!$loop->last && !$poem->author) mb-8 @endif">
+<div class="poem-metadata card @if(!$loop->last || $poem->author) mb-8 @endif">
     <h2 class="poem-metadata-title card-title">{{ $metadata->title }}</h2>
     <div class="poem-metadata-content card-content leading-10 [&>p]:mb-6">{!! $metadata->content !!}</div>
 </div>
