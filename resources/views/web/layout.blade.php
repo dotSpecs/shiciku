@@ -14,7 +14,7 @@
     <meta http-equiv="content-type" content="text/html;charset=utf-8">
     <meta name="theme-color" content="#FFFFFF" />
     <meta name="author" content="Specs">
-    <meta name="baidu-site-verification" content="codeva-T3HNzwpUTs" />
+    <meta name="baidu-site-verification" content="codeva-JKcblODCoe" />
     <meta name="baidu_union_verify" content="fdc73309de255e6b8c25cbf4db0e52de">
 
     <meta name="keywords" content="@yield('keywords')古诗词文库,古诗,诗词,古文,唐诗,宋词,古文,诗,词,曲,赋,文,诗人" />
