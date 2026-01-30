@@ -226,7 +226,7 @@ class PoemController extends Controller
 
     public function audio($poem_id)
     {
-        $poem = Poem::where('poem_id', $poem_id)->first();
+        $poem = Poem::query()->where('poem_id', $poem_id)->with('author', 'dynasty')->first();
 
         if (!$poem) {
             return response()->json([
@@ -248,7 +248,7 @@ class PoemController extends Controller
         $content = preg_replace('/\(.*?\)|（.*?）/u', '', $content);
 
         // 拼接标题、朝代、作者和内容，中间加入 1秒 停顿
-        $text = $poem->name . '<break time="1s"/>' . "\n\n" . $poem->dynasty->name . ' · ' . $poem->author->name . '<break time="1s"/>' . "\n\n" . $content;
+        $text = $poem->name . '<break time="1s"/>' . "\n\n" . ($poem->dynasty ? $poem->dynasty->name : '') . ' · ' . ($poem->author ? $poem->author->name : '佚名') . '<break time="1s"/>' . "\n\n" . $content;
 
         // dd($poem->content,$content,$text);
         // 调用AudioService生成音频
