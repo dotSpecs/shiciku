@@ -7,6 +7,7 @@ use App\Models\Author;
 use App\Models\Dynasty;
 use App\Models\Poem;
 use App\Models\Tag;
+use App\Services\Utils\AudioService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
@@ -221,5 +222,38 @@ class PoemController extends Controller
 
 
         return view('web.poem.search', compact('poems', 'authors', 'type', 'query', 'page'));
+    }
+
+    public function audio($poem_id)
+    {
+        $poem = Poem::where('poem_id', $poem_id)->first();
+
+        if (!$poem) {
+            return response()->json([
+                'status' => 'error',
+                'message' => '诗词不存在'
+            ], 404);
+        }
+
+        // 处理诗词内容：将 </p> 和 <br> 标签转换为 0.5秒 停顿
+        $content = str_replace(
+            ['</p>', '<br>', '<br/>', '<br />'],
+            "\n\n",
+            $poem->content
+        );
+        // 去除其他 HTML 标签，只保留 <break>
+        $content = strip_tags($content);
+
+        // 去除括号及括号内的内容（包括中文和英文括号）
+        $content = preg_replace('/\(.*?\)|（.*?）/u', '', $content);
+
+        // 拼接标题、朝代、作者和内容，中间加入 1秒 停顿
+        $text = $poem->name . '<break time="1s"/>' . "\n\n" . $poem->dynasty->name . ' · ' . $poem->author->name . '<break time="1s"/>' . "\n\n" . $content;
+
+        // dd($poem->content,$content,$text);
+        // 调用AudioService生成音频
+        $result = AudioService::getAudio($text);
+
+        return response()->json($result);
     }
 }

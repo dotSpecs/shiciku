@@ -13,6 +13,7 @@
     <meta name="referrer" content="always">
     <meta http-equiv="content-type" content="text/html;charset=utf-8">
     <meta name="theme-color" content="#FFFFFF" />
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="author" content="Specs">
     <meta name="baidu-site-verification" content="codeva-JKcblODCoe" />
     <meta name="baidu_union_verify" content="fdc73309de255e6b8c25cbf4db0e52de">

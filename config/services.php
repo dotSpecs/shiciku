@@ -35,4 +35,7 @@ return [
         ],
     ],
 
+    'edgetts' => [
+        'token' => env('EDGE_TTS_TOKEN'),
+    ],
 ];
