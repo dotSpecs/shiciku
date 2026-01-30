@@ -100,6 +100,10 @@ window.togglePinyin = async () => {
     // Clean text (remove special chars)
     let cleaned = cleanText(textWithBreaks);
 
+    // Normalize newlines: limit to max 2 consecutive newlines to avoid excessive spacing
+    // This handles cases where source HTML has newlines between P tags
+    cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
+
     // Generate pinyin HTML manually to ensure newlines are preserved
     // Split by newline and map each line to pinyin html
     let lines = cleaned.split("\n");
