@@ -10,31 +10,41 @@
 <div class="poem card mb-8">
     <h1 class="poem-name card-title flex items-center justify-between">
         {{-- <a href="{{ route('poem.show', poem_slug($poem)) }}" class="link text-xl"> --}}
-            {{ $poem->name }}
+            <span id="poem-title">{{ $poem->name }}</span>
         {{-- </a> --}}
 
         <div class="flex gap-2">
             <span class="badge cursor-pointer" id="readAloudBtn" onclick="handleReadAloud()">朗读</span>
+            <span class="badge cursor-pointer" onclick="togglePinyin()">拼音</span>
             <span class="badge cursor-pointer @if(empty($poem->yizhu)) !hidden @endif" onclick="toggleYizhu()">译注</span>
         </div>
     </h1>
     <div class="card-content ">
         <div class="poem-info my-2 secondary">
             @if($poem->dynasty)
-            <a href="{{ route('poem.index', ['dynasty_id' => $poem->dynasty->id]) }}" class="link secondary">
+            <a href="{{ route('poem.index', ['dynasty_id' => $poem->dynasty->id]) }}" class="link secondary" id="poem-dynasty">
                 {{ $poem->dynasty->name }}
             </a> ·
             @endif
             @if($poem->author)
-            <a href="{{ route('author.show', $poem->author->author_id) }}" class="link secondary">
+            <a href="{{ route('author.show', $poem->author->author_id) }}" class="link secondary" id="poem-author">
                 {{ $poem->author->name }}
             </a>
             @else
-            佚名
+            <span id="poem-author">佚名</span>
             @endif
         </div>
-        <div class="poem-content escape-html leading-10 [&>p]:mb-6">{!! $poem->content !!}</div>
+        <div class="poem-content escape-html leading-10 [&>p]:mb-6" id="poem-content">{!! $poem->content !!}</div>
         <div class="poem-yizhu-content escape-html leading-10 [&>p]:mb-6 hidden">{!! $poem->yizhu !!}</div>
+
+        <script>
+            window.poemData = {
+                title: @json($poem->name),
+                dynasty: @json($poem->dynasty ? $poem->dynasty->name : ''),
+                author: @json($poem->author ? $poem->author->name : '佚名'),
+                content: @json($poem->content)
+            };
+        </script>
         
         <!-- Audio Player Container -->
         <div id="audioPlayerContainer" class="mt-6 p-4 bg-slate-50 dark:bg-slate-700 rounded-md" style="display: none;">

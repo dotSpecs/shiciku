@@ -45,3 +45,62 @@ body {
 .badge {
     @apply inline-flex items-center justify-center my-1 gap-x-1.5 py-1 px-2.5 rounded-md text-sm font-medium border border-slate-300 text-slate-800 dark:border-slate-500 dark:text-white;
 }
+
+/* Pinyin Styles */
+.py-result-item {
+    line-height: 2rem;
+    display: inline-block;
+    width: 36px;
+    text-align: center;
+}
+
+.py-result-item .py-chinese-item,
+.py-non-chinese-item {
+    background: url("https://cdn.meirishici.com/assets/images/bg/py-bg.png")
+        no-repeat;
+    background-size: contain;
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    text-align: center;
+}
+
+.py-non-chinese-item {
+    margin: 0.5rem 3.6px;
+}
+
+.py-result-item rt.py-pinyin-item {
+    font-size: 0.8rem;
+    margin-bottom: 3px;
+    @apply text-slate-500 dark:text-slate-400;
+}
+
+#poem-title .py-chinese-item {
+    font-size: 24px;
+}
+
+#poem-dynasty .py-chinese-item,
+#poem-author .py-chinese-item,
+#poem-content .py-chinese-item {
+    font-size: 20px;
+}
+
+#poem-title .py-result-item,
+#poem-dynasty .py-result-item,
+#poem-author .py-result-item,
+#poem-content .py-result-item {
+    width: auto;
+    margin: 0 2px;
+}
+
+#poem-title .py-result-item .py-chinese-item,
+#poem-dynasty .py-result-item .py-chinese-item,
+#poem-author .py-result-item .py-chinese-item,
+#poem-content .py-result-item .py-chinese-item {
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+}
+
+/* Specific overrides for consistent sizing if needed, currently reusing scaling via font-size above */
