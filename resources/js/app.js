@@ -55,11 +55,14 @@ window.togglePinyin = async () => {
 
     // Helper to clean text similar to reference logic
     const cleanText = (text) => {
-        return text
-            .replace(/\u200B/g, "") // zero-width space
-            .replace(/\uFEFF/g, "") // BOM
-            .replace(/\s/g, "") // spaces
-            .trim();
+        return (
+            text
+                .replace(/\u200B/g, "") // zero-width space
+                .replace(/\uFEFF/g, "") // BOM
+                // Replace all whitespace EXCEPT newlines
+                .replace(/[^\S\n]/g, "")
+                .trim()
+        );
     };
 
     // Convert Title
@@ -84,29 +87,32 @@ window.togglePinyin = async () => {
     }
 
     // Convert Content
-    // Since poemData.content is HTML (e.g., <p>...</p>), we process the DOM nodes
-    // to preserve structure, but clean the text content of each paragraph.
-    const paragraphs = contentEl.querySelectorAll("p");
+    // Use window.poemData.content directly as source of truth
+    let contentHtml = window.poemData.content;
 
-    if (paragraphs.length > 0) {
-        paragraphs.forEach((p) => {
-            // Get text from the paragraph (strips tags)
-            let text = p.innerText;
-            let cleaned = cleanText(text);
+    // Replace <p> endings and <br> with newlines to preserve structure
+    // We treat </p> as a double newline (paragraph break) and <br> as single newline
+    let textWithBreaks = contentHtml
+        .replace(/<\/p>/gi, "\n\n")
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<[^>]+>/g, ""); // Strip all other tags
 
-            if (cleaned) {
-                p.innerHTML = html(cleaned, { wrapNonChinese: true });
-            }
-        });
-    } else {
-        // Fallback if no P tags found
-        let text = contentEl.innerText;
-        let cleaned = cleanText(text);
-        contentEl.innerHTML = html(cleaned, { wrapNonChinese: true }).replace(
-            /\n/g,
-            "<br>",
-        );
-    }
+    // Clean text (remove special chars)
+    let cleaned = cleanText(textWithBreaks);
+
+    // Generate pinyin HTML manually to ensure newlines are preserved
+    // Split by newline and map each line to pinyin html
+    let lines = cleaned.split("\n");
+    let pinyinLines = lines.map((line) => {
+        // If line is empty (e.g. from \n\n), return empty string to create a blank line via join
+        if (!line) return "";
+        return html(line, { wrapNonChinese: true });
+    });
+
+    // Join with <br> to restore visual line breaks
+    let pinyinHtml = pinyinLines.join("<br>");
+
+    contentEl.innerHTML = pinyinHtml;
 
     contentEl.dataset.pinyinActive = "true";
 };
