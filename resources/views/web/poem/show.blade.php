@@ -20,7 +20,7 @@
         </div>
     </h1>
     <div class="card-content ">
-        <div class="poem-info my-2 secondary">
+        <div class="poem-info my-2 secondary mb-8">
             @if($poem->dynasty)
             <a href="{{ route('poem.index', ['dynasty_id' => $poem->dynasty->id]) }}" class="link secondary" id="poem-dynasty">
                 {{ $poem->dynasty->name }}

@@ -17,7 +17,7 @@ class AudioService
     // 云扬: zh-CN-YunyangNeural, 云夏(小男孩): zh-CN-YunxiaNeural, 晓甄(女): zh-CN-XiaozhenNeural
     // 晓悠(儿童): zh-CN-XiaoyouNeural, 晓萱(小女孩): zh-CN-XiaoxuanNeural, 晓双(儿童): zh-CN-XiaoshuangNeural
     // 晓晓: zh-CN-XiaoxiaoNeural, 云健: zh-CN-YunjianNeural, 晓秋: zh-CN-XiaoqiuNeural
-    public static function getAudio($text, $voice = 'zh-CN-YunyangNeural', $speed = 0.85)
+    public static function getAudio($text, $voice = 'zh-CN-XiaoqiuNeural', $speed = 0.85)
     {
         $url = 'https://tts.meirishici.com/api/v1/audio/speech';
 
