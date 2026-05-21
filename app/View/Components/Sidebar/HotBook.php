@@ -25,7 +25,7 @@ class HotBook extends Component
     {
         $books = Cache::remember('index-hot-books', 60 * 5, function () {
             return Book::query()
-                ->whereIn('id', [1, 2, 5, 8, 15, 17, 21, 26, 105, 106, 107, 108])
+                ->whereIn('id', [1, 2, 5, 8, 15, 17, 21, 26, 105, 106, 107, 394])
                 ->get();
         });
 

@@ -24,8 +24,9 @@ class HotTag extends Component
     public function render(): View|Closure|string
     {
         $tags = Cache::remember('index-hot-tags-' . $this->limit, 60 * 5, function () {
-            return Tag::query()->orderBy('priority', 'desc')
-                ->where('priority', '>', 0)
+            return Tag::query()
+                ->orderBy('order')
+                ->where('order', '<', 9999)
                 ->limit($this->limit)
                 ->get();
         });

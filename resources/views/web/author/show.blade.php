@@ -27,9 +27,9 @@
 
 
 
-@foreach ($author->metadatas as $metadata)
+@foreach ($author->ziliaos as $metadata)
 <div class="author-metadata card mb-8">
-    <h2 class="author-metadata-title card-title">{{ $metadata->title }}</h2>
+    <h2 class="author-metadata-title card-title">{{ $metadata->name }}</h2>
     <div class="author-metadata-content card-content leading-10 [&>p]:mb-6">{!! $metadata->content !!}</div>
 </div>
 @endforeach

@@ -56,7 +56,7 @@ class BookController extends Controller
         }
 
         $article = BookArticle::where('article_id', $article_id)
-            ->with(['chapter', 'book', 'book.chapters', 'metadatas', 'book.author'])
+            ->with(['chapter', 'book', 'book.chapters', 'supplements', 'book.author'])
             ->first();
 
         if (!$article) {

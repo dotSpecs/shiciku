@@ -22,21 +22,21 @@ class PoemController extends Controller
         // $type = request()->get('type');
 
         $dynasties = Dynasty::query()
+            ->where('id', '<', 13)
             ->select('id', 'name')
             ->orderBy('id', 'asc')
             ->get();
 
         $tags = Tag::query()->select('id', 'name')
-            ->orderBy('priority', 'desc')
-            ->where('priority', '>', 0)
-            ->limit(21)
+            ->orderBy('order')
+            ->limit(36)
             ->get();
 
         $authors = Author::query()
-            ->select('author_id', 'name')
-            ->orderBy('priority', 'desc')
-            ->where('priority', '>', 0)
-            ->limit(33)
+            ->select('id', 'author_id', 'name')
+            ->orderBy('order')
+            ->where('order', '<', 999999)
+            ->limit(36)
             ->get();
 
 
@@ -45,10 +45,10 @@ class PoemController extends Controller
         $tag = null;
 
         $query = Poem::query()
-            ->select('poem_id', 'name', 'content', 'dynasty_id', 'author_id')
+            ->select('id', 'poem_id', 'name', 'content', 'dynasty_id', 'author_id')
             ->with(['author', 'dynasty'])
-            ->orderBy('priority', 'desc')
-            ->orderBy('id', 'asc');
+            ->orderBy('order')
+            ->orderBy('id');
 
         if ($author_id) {
             $author = Author::where('author_id', $author_id)->first();
@@ -109,7 +109,7 @@ class PoemController extends Controller
 
         $poem = Cache::remember('poem-of-' . $poem_id, 300, function () use ($poem_id) {
             return Poem::where('poem_id', $poem_id)
-                ->with(['author', 'dynasty', 'tags', 'quotes', 'metadatas'])
+                ->with(['author', 'dynasty', 'tags', 'mingjus', 'fanyis', 'shangxis'])
                 ->first();
         });
 
@@ -139,11 +139,11 @@ class PoemController extends Controller
         }
 
         $authors = $type === 'author' ? Author::query()
-            ->select(['author_id', 'name', 'dynasty_id', 'pic', 'content'])
+            ->select(['id', 'author_id', 'name', 'dynasty_id', 'pic_small', 'pic_big', 'content'])
             ->with('dynasty')
             ->withCount('poems')
             ->where('name', 'like', '%' . $query . '%')
-            ->orderByDesc('priority')
+            ->orderBy('order')
             ->simplePaginate()
             ->withQueryString() : null;
 

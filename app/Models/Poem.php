@@ -2,71 +2,48 @@
 
 namespace App\Models;
 
-use Elastic\ScoutDriverPlus\Searchable as ScoutDriverPlusSearchable;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\MorphMany;
-use Laravel\Scout\Searchable;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Poem extends Model
 {
-    use ScoutDriverPlusSearchable;
-
     protected $table = 'poems';
 
-    protected $hidden = ['id', 'p_id', 'yizhu', 'yizhu_reference'];
+    public $incrementing = false;
 
-    public function author()
+    protected $keyType = 'int';
+
+    protected $guarded = [];
+
+    public function author(): BelongsTo
     {
-        return $this->belongsTo(Author::class, 'author_id', 'id')
-            ->select('authors.id', 'authors.pic', 'authors.author_id', 'authors.name', 'authors.content');
+        return $this->belongsTo(Author::class, 'author_id', 'id');
     }
 
-    public function dynasty()
+    public function dynasty(): BelongsTo
     {
         return $this->belongsTo(Dynasty::class, 'dynasty_id', 'id');
     }
 
-    public function quotes()
+    public function fanyis(): HasMany
     {
-        return $this->hasMany(Quote::class, 'poem_id', 'id');
+        return $this->hasMany(PoemFanyi::class, 'poem_id', 'id')->orderBy('order');
     }
 
-    public function metadatas(): MorphMany
+    public function shangxis(): HasMany
     {
-        return $this->morphMany(Metadata::class, 'metadata')
-            ->select(['id', 'title', 'content', 'metadata_id', 'metadata_type']);
+        return $this->hasMany(PoemShangxi::class, 'poem_id', 'id')->orderBy('order');
     }
 
-    public function tags()
+    public function tags(): BelongsToMany
     {
-        return $this->belongsToMany(Tag::class, 'poem_tag', 'poem_id', 'tag_id')
-            ->select('tags.id', 'tags.name');
+        return $this->belongsToMany(Tag::class, 'poem_tag', 'poem_id', 'tag_id');
     }
 
-    public function searchableAs(): string
+    public function mingjus(): HasMany
     {
-        return 'poems_index';
-    }
-
-    public function toSearchableArray(): array
-    {
-        return [
-            'id' => $this->id,
-            'name' => $this->name,
-            'content' => $this->content,
-            'author' => $this->author ? $this->author->name : null,
-        ];
-    }
-
-    public function makeSearchableUsing(Collection $models): Collection
-    {
-        return $models->load('author');
-    }
-
-    protected function makeAllSearchableUsing(Builder $query): Builder
-    {
-        return $query->with('author');
+        return $this->hasMany(Mingju::class, 'source_poem_id', 'id');
     }
 }

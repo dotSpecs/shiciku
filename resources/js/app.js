@@ -120,3 +120,110 @@ window.togglePinyin = async () => {
 
     contentEl.dataset.pinyinActive = "true";
 };
+
+/**
+ * Common Audio Player Logic
+ */
+window.AudioPlayerManager = class {
+    constructor() {
+        this.isLoading = false;
+        this.isLoaded = false;
+        this.currentUrl = null;
+    }
+
+    async play(
+        apiUrl,
+        buttonId = "readAloudBtn",
+        containerId = "audioPlayerContainer",
+        playerId = "audioPlayer",
+    ) {
+        if (this.isLoading || this.isLoaded) return;
+
+        const btn = document.getElementById(buttonId);
+        const playerContainer = document.getElementById(containerId);
+        const player = document.getElementById(playerId);
+
+        if (!btn || !playerContainer || !player) {
+            console.error("Audio player elements not found");
+            return;
+        }
+
+        this.isLoading = true;
+        const originalText = btn.textContent;
+        btn.textContent = "获取中...";
+        btn.classList.add("cursor-not-allowed", "opacity-50");
+
+        try {
+            const token = document
+                .querySelector('meta[name="csrf-token"]')
+                ?.getAttribute("content");
+            const response = await fetch(apiUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-TOKEN": token,
+                },
+            });
+
+            const data = await response.json();
+
+            if (data.status === "success" && data.body) {
+                const audioBlob = this.base64ToBlob(data.body, "audio/mpeg");
+                const audioUrl = URL.createObjectURL(audioBlob);
+
+                player.src = audioUrl;
+                playerContainer.style.display = "block";
+                player.play();
+
+                this.isLoaded = true;
+                this.currentUrl = apiUrl;
+                btn.textContent = "已加载";
+            } else {
+                throw new Error(data.message || "未知错误");
+            }
+        } catch (error) {
+            console.error("Error fetching audio:", error);
+            alert("获取音频失败：" + error.message);
+            btn.textContent = originalText;
+            btn.classList.remove("cursor-not-allowed", "opacity-50");
+            this.isLoading = false; // Reset loading state on error
+        } finally {
+            if (this.isLoaded) {
+                this.isLoading = false;
+            }
+        }
+    }
+
+    reset() {
+        this.isLoading = false;
+        this.isLoaded = false;
+        // Note: We might want to reset the button state here if needed, but usually reset happens on page navigation
+    }
+
+    close(containerId = "audioPlayerContainer", playerId = "audioPlayer") {
+        const playerContainer = document.getElementById(containerId);
+        const player = document.getElementById(playerId);
+        if (player) {
+            player.pause();
+            player.currentTime = 0;
+        }
+        if (playerContainer) {
+            playerContainer.style.display = "none";
+        }
+    }
+
+    base64ToBlob(base64, mimeType) {
+        const byteCharacters = atob(base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        return new Blob([byteArray], { type: mimeType });
+    }
+};
+
+// Initialize global instance
+window.audioPlayerManager = new window.AudioPlayerManager();
+window.handleReadAloud = (apiUrl) => window.audioPlayerManager.play(apiUrl);
+window.closeAudioPlayer = () => window.audioPlayerManager.close();

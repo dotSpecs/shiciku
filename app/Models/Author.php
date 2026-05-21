@@ -3,31 +3,46 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Author extends Model
 {
     protected $table = 'authors';
 
-    protected $hidden = ['id', 'a_id'];
+    public $incrementing = false;
 
-    public function poems()
+    protected $keyType = 'int';
+
+    protected $guarded = [];
+
+    public function getPicAttribute($value): ?string
     {
-        return $this->hasMany(Poem::class, 'author_id', 'id');
+        if ($value) {
+            return $value;
+        }
+
+        $pic = $this->pic_big ?: $this->pic_small;
+
+        return $pic ? 'https://ziyuan.guwendao.net/' . $pic : '';
     }
 
-    public function dynasty()
+    public function dynasty(): BelongsTo
     {
         return $this->belongsTo(Dynasty::class, 'dynasty_id', 'id');
     }
 
-    public function metadatas(): MorphMany
+    public function ziliaos(): HasMany
     {
-        return $this->morphMany(Metadata::class, 'metadata')
-            ->select(['id', 'title', 'content', 'metadata_id', 'metadata_type']);
+        return $this->hasMany(AuthorZiliao::class, 'author_id', 'id')->orderBy('order');
     }
 
-    public function books()
+    public function poems(): HasMany
+    {
+        return $this->hasMany(Poem::class, 'author_id', 'id');
+    }
+
+    public function books(): HasMany
     {
         return $this->hasMany(Book::class, 'author_id', 'id');
     }

@@ -25,7 +25,7 @@ class HotPoem extends Component
     {
         $poems = Cache::remember('index-hot-poems-' . $this->limit, 60 * 5, function () {
             return Poem::query()->with('dynasty', 'author')
-                ->where('priority', '>=', 2000)
+                ->where('order', '<=', 8000)
                 ->inRandomOrder()
                 ->limit($this->limit)
                 ->get();

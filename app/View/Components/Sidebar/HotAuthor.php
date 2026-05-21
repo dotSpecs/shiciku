@@ -26,9 +26,9 @@ class HotAuthor extends Component
         $authors = Cache::remember('index-hot-authors-' . $this->limit, 60 * 5, function () {
             return Author::query()
                 ->with('dynasty')
-                ->where('priority', '>=', 999920)
+                ->where('order', '<=', 5020)
                 ->where('id', '!=', 23679)
-                ->where('pic', '!=', '')
+                ->where('pic_big', '!=', '')
                 ->inRandomOrder()
                 ->limit($this->limit)
                 ->get();

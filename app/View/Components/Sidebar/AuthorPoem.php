@@ -34,7 +34,7 @@ class AuthorPoem extends Component
             return '';
         }
 
-        $poems = $author->poems()->limit(50)->orderBy('priority', 'desc')->get();
+        $poems = $author->poems()->orderBy('order')->limit(50)->get();
 
         // 如果没有诗歌，返回空视图
         if ($poems->isEmpty()) {

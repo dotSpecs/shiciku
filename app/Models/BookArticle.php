@@ -3,30 +3,35 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class BookArticle extends Model
 {
     protected $table = 'book_articles';
 
-    public function chapter()
+    public $incrementing = false;
+
+    protected $keyType = 'int';
+
+    protected $guarded = [];
+
+    protected $casts = [
+        'yiyi' => 'boolean',
+    ];
+
+    public function book(): BelongsTo
     {
-        return $this->belongsTo(BookChapter::class);
+        return $this->belongsTo(Book::class, 'book_id', 'id');
     }
 
-    public function book()
+    public function chapter(): BelongsTo
     {
-        return $this->belongsTo(Book::class);
+        return $this->belongsTo(BookChapter::class, 'chapter_id', 'id');
     }
 
-    public function metadatas(): MorphMany
+    public function supplements(): HasMany
     {
-        return $this->morphMany(Metadata::class, 'metadata')
-            ->select(['id', 'title', 'content', 'metadata_id', 'metadata_type']);
-    }
-
-    public function getMorphClass(): string
-    {
-        return 'App\Models\Article';
+        return $this->hasMany(BookArticleSupplement::class, 'article_id', 'id');
     }
 }

@@ -14,9 +14,13 @@ class AuthorController extends Controller
         $page = request()->get('page', 1);
         $dynasty_id = request()->get('dynasty_id');
 
-        $dynasties = Dynasty::query()->orderBy('id')->get();
+        $dynasties = Dynasty::query()
+            ->select('id', 'name')
+            ->where('id', '<', 13)
+            ->orderBy('id')
+            ->get();
 
-        $query = Author::query()->orderByDesc('priority');
+        $query = Author::query()->orderBy('order');
 
         $dynasty = null;
         if ($dynasty_id) {
@@ -34,7 +38,7 @@ class AuthorController extends Controller
     public function show($author_id)
     {
         $author = Author::where('author_id', $author_id)
-            ->with(['metadatas', 'dynasty'])
+            ->with(['ziliaos', 'dynasty'])
             ->withCount('poems')
             ->withCount('books')
             ->first();
