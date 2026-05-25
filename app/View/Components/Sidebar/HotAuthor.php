@@ -25,10 +25,10 @@ class HotAuthor extends Component
     {
         $authors = Cache::remember('index-hot-authors-' . $this->limit, 60 * 5, function () {
             return Author::query()
-                ->with('dynasty')
-                ->where('order', '<=', 5020)
-                ->where('id', '!=', 23679)
-                ->where('pic_big', '!=', '')
+                ->select(['id', 'author_id', 'name', 'content', 'pic', 'pic_small', 'dynasty_id'])
+                ->with(['dynasty:id,name'])
+                ->where('order', '<=', 5100)
+                ->where('pic', '!=', '')
                 ->inRandomOrder()
                 ->limit($this->limit)
                 ->get();

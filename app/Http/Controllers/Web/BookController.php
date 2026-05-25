@@ -7,38 +7,81 @@ use App\Models\Book;
 use App\Models\BookArticle;
 use App\Services\Utils\AudioService;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Cache;
 
 class BookController extends Controller
 {
     public function index()
     {
-        $page = request()->input('page', 1);
-        // $type = request()->input('type');
+        $page = (int) request()->input('page', 1);
+        $class = request()->input('class');
+        $type = request()->input('type');
 
-        $types = [];
-        // $types = Book::query()->select(['class', 'type'])->groupBy('class', 'type')->orderBy('id')->get()->toArray();
+        $types = Cache::remember('book-index-types', 3600, function () {
+            $classOrder = ['经部', '史部', '子部', '集部'];
 
-        // $types = array_reduce($types, function ($carry, $item) {
-        //     $carry[$item['class']][] = $item['type'];
-        //     return $carry;
-        // });
+            $rows = Book::query()
+                ->select('class', 'type')
+                ->whereNotNull('class')
+                ->where('class', '!=', '')
+                ->whereNotNull('type')
+                ->where('type', '!=', '')
+                ->distinct()
+                ->get();
 
-        $query = Book::query()->orderBy('id');
+            $grouped = [];
+            foreach ($classOrder as $c) {
+                $grouped[$c] = $rows->where('class', $c)->pluck('type')->unique()->values()->all();
+            }
 
-        // if ($type) {
-        //     $query->where('type', $type);
-        // }
+            return $grouped;
+        });
 
-        $books = $query->simplePaginate(10);
+        $query = Book::query()
+            ->select(['id', 'book_id', 'name', 'content'])
+            ->orderBy('id');
 
-        return view('web.book.index', compact('books', 'page', 'types'));
+        if ($class) {
+            $query->where('class', $class);
+        }
+
+        if ($type) {
+            $query->where('type', $type);
+        }
+
+        if ($page > 50) {
+            $books = new Paginator(collect(), 10, $page, [
+                'path' => Paginator::resolveCurrentPath(),
+                'pageName' => 'page',
+            ]);
+            $books->appends(request()->query());
+        } else {
+            $books = $query->simplePaginate(10)->withQueryString();
+            if ($page >= 50 && $books->hasMorePages()) {
+                $books = (new Paginator($books->items(), 10, $page, [
+                    'path' => Paginator::resolveCurrentPath(),
+                    'pageName' => 'page',
+                ]))->appends(request()->query());
+            }
+        }
+
+        return view('web.book.index', compact('books', 'page', 'types', 'class', 'type'));
     }
 
     public function show($book_id)
     {
-        $book = Book::where('book_id', $book_id)
-            ->with('chapters', 'chapters.articles', 'author')
-            ->first();
+        $book = Cache::remember('book-of-' . $book_id, 1800, function () use ($book_id) {
+            return Book::query()
+                ->select(['id', 'book_id', 'name', 'content', 'author_id'])
+                ->where('book_id', $book_id)
+                ->with([
+                    'author:id,author_id,name',
+                    'chapters:id,book_id,name,order',
+                    'chapters.articles:id,article_id,chapter_id,name,order',
+                ])
+                ->first();
+        });
 
         if (!$book) {
             return redirect()->route('book.index');
@@ -49,40 +92,60 @@ class BookController extends Controller
 
     public function article($book_id, $article_id)
     {
-        $book = Book::where('book_id', $book_id)->first();
+        $book = Cache::remember('book-basic-' . $book_id, 1800, function () use ($book_id) {
+            return Book::query()
+                ->select(['id', 'book_id', 'name', 'author_id'])
+                ->where('book_id', $book_id)
+                ->first();
+        });
 
         if (!$book) {
             return redirect()->route('book.index');
         }
 
-        $article = BookArticle::where('article_id', $article_id)
-            ->with(['chapter', 'book', 'book.chapters', 'supplements', 'book.author'])
-            ->first();
+        $article = Cache::remember('book-article-' . $article_id, 1800, function () use ($article_id, $book) {
+            $article = BookArticle::query()
+                ->select(['id', 'article_id', 'book_id', 'chapter_id', 'name', 'content'])
+                ->where('article_id', $article_id)
+                ->with([
+                    'chapter:id,name',
+                    'supplements:id,article_id,name,content',
+                ])
+                ->first();
+
+            if (!$article) {
+                return null;
+            }
+
+            $article->setRelation('book', $book->loadMissing('author:id,author_id,name'));
+
+            $article->previous = BookArticle::query()
+                ->select('id', 'article_id', 'name')
+                ->where('book_id', $book->id)
+                ->where('id', '<', $article->id)
+                ->orderBy('id', 'desc')
+                ->first();
+
+            $article->next = BookArticle::query()
+                ->select('id', 'article_id', 'name')
+                ->where('book_id', $book->id)
+                ->where('id', '>', $article->id)
+                ->orderBy('id', 'asc')
+                ->first();
+
+            return $article;
+        });
 
         if (!$article) {
             return redirect()->route('book.show', $book_id);
         }
-
-        // 获取上一篇（同一本书中，id比当前小的最大一篇）
-        $article->previous = BookArticle::where('book_id', $book->id)
-            ->where('id', '<', $article->id)
-            ->orderBy('id', 'desc')
-            ->select('id', 'article_id', 'name')
-            ->first();
-
-        // 获取下一篇（同一本书中，id比当前大的最小一篇）
-        $article->next = BookArticle::where('book_id', $book->id)
-            ->where('id', '>', $article->id)
-            ->orderBy('id', 'asc')
-            ->select('id', 'article_id', 'name')
-            ->first();
 
         return view('web.book.article', compact('article'));
     }
 
     public function audio($book_id, $article_id)
     {
-        $book = Book::where('book_id', $book_id)->first();
+        $book = Book::select('id', 'book_id')->where('book_id', $book_id)->first();
         if (!$book) {
             return response()->json([
                 'status' => 'error',
@@ -90,7 +153,9 @@ class BookController extends Controller
             ], 404);
         }
 
-        $article = BookArticle::where('article_id', $article_id)->first();
+        $article = BookArticle::select('id', 'article_id', 'name', 'content')
+            ->where('article_id', $article_id)
+            ->first();
 
         if (!$article) {
             return response()->json([

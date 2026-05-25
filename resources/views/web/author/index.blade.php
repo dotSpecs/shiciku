@@ -12,13 +12,15 @@
 @section('content')
 
 <div class="card mb-8">
-    <h2 class="card-title">朝代：</h2>
+    <h2 class="card-title-sm">朝代：</h2>
     <div class="card-content">
-        @foreach ($dynasties as $d)
-        <a href="{{ route('author.index', ['dynasty_id' => $d->id]) }}" class="link badge {{ ($dynasty && $dynasty->id == $d->id) ? 'primary' : '' }}">
-            {{ $d->name }}
-        </a>
-        @endforeach
+        <div class="flex flex-wrap gap-1">
+            @foreach ($dynasties as $d)
+            <a href="{{ route('author.index', ['dynasty_id' => $d->id]) }}" class="link badge {{ ($dynasty && $dynasty->id == $d->id) ? 'primary' : '' }}">
+                {{ $d->name }}
+            </a>
+            @endforeach
+        </div>
     </div>
 </div>
 

@@ -54,9 +54,8 @@
         </div>
     </div>
     <div class="card-content poem-tags mt-8" @if($poem->tags->isEmpty()) style="display: none;" @endif>
-        所属合集：
         @foreach ($poem->tags as $tag)
-        <a href="{{ route('poem.index', ['tag_id' => $tag->id]) }}" class="link badge">{{ $tag->name }}</a>
+        <a href="{{ route('poem.index', ['tag_id' => $tag->id]) }}" class="link badge secondary !text-xs">{{ $tag->name }}</a>
         @endforeach
     </div>
 </div>
@@ -67,7 +66,13 @@
     <div class="card-content">
         <ul class="marker:text-red-500 list-disc ps-5 space-y-2 ">
             @foreach ($poem->mingjus as $mingju)
-            <li class="quote">{{ $mingju->name }}</li>
+            <li class="quote">
+                @if ($mingju->mingju_id)
+                    <a href="{{ route('mingju.show', $mingju->mingju_id) }}" class="link">{{ $mingju->name }}</a>
+                @else
+                    {{ $mingju->name }}
+                @endif
+            </li>
             @endforeach
         </ul>
     </div>

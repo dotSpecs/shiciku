@@ -5,6 +5,7 @@ namespace App\View\Components\Sidebar;
 use App\Models\Author;
 use Closure;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\View\Component;
 
 class AuthorPoem extends Component
@@ -27,21 +28,31 @@ class AuthorPoem extends Component
             return '';
         }
 
-        $author = Author::where('author_id', $this->authorId)->first();
+        $data = Cache::remember('author-poems-' . $this->authorId, 1800, function () {
+            $author = Author::query()
+                ->select(['id', 'author_id', 'name'])
+                ->where('author_id', $this->authorId)
+                ->first();
 
-        // 如果找不到作者，返回空视图
-        if (!$author) {
+            if (!$author) {
+                return null;
+            }
+
+            $poems = $author->poems()
+                ->select(['id', 'poem_id', 'name', 'author_id', 'order'])
+                ->orderBy('order')
+                ->limit(50)
+                ->get();
+
+            return ['author' => $author, 'poems' => $poems];
+        });
+
+        if (!$data || $data['poems']->isEmpty()) {
             return '';
         }
 
-        $poems = $author->poems()->orderBy('order')->limit(50)->get();
-
-        // 如果没有诗歌，返回空视图
-        if ($poems->isEmpty()) {
-            return '';
-        }
-
-        $poems = $poems->random(min($this->limit, $poems->count()));
+        $author = $data['author'];
+        $poems = $data['poems']->random(min($this->limit, $data['poems']->count()));
 
         return view('components.sidebar.author-poem', compact('author', 'poems'));
     }

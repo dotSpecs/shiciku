@@ -24,7 +24,9 @@ class HotPoem extends Component
     public function render(): View|Closure|string
     {
         $poems = Cache::remember('index-hot-poems-' . $this->limit, 60 * 5, function () {
-            return Poem::query()->with('dynasty', 'author')
+            return Poem::query()
+                ->select(['id', 'poem_id', 'name', 'content', 'dynasty_id', 'author_id'])
+                ->with(['dynasty:id,name', 'author:id,author_id,name'])
                 ->where('order', '<=', 8000)
                 ->inRandomOrder()
                 ->limit($this->limit)

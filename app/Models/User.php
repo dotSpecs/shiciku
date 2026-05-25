@@ -37,4 +37,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(WxUser::class);
     }
+
+    public function favorites(): HasMany
+    {
+        return $this->hasMany(Favorite::class);
+    }
 }

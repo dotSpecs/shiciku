@@ -9,26 +9,26 @@
 
 <div class="card mb-8 ">
 
-    <h2 class="card-title">合集：</h2>
+    <h2 class="card-title-sm">合集：</h2>
 
     <div class="card-content">
-        <div class="flex flex-wrap gap-2">
+        <div class="flex flex-wrap gap-1">
             @if ($tag && !in_array($tag->id, $tags->pluck('id')->toArray()))
             <a href="{{ route('poem.index', ['tag_id' => $tag->id]) }}" class="link badge !text-xs primary">
                 {{ $tag->name }}
             </a>
             @endif
             @foreach ($tags as $t)
-            <a href="{{ route('poem.index', ['tag_id' => $t->id]) }}" class="link badge !text-xs {{ ($tag && $tag->id == $t->id) ? 'primary' : '' }}">
+            <a href="{{ $t->zhuanti ? route('poem.zhuanti', $t->zhuanti->alias) : route('poem.index', ['tag_id' => $t->id]) }}" class="link badge !text-xs {{ ($tag && $tag->id == $t->id) ? 'primary' : '' }}">
                 {{ $t->name }}
             </a>
             @endforeach
         </div>
     </div>
 
-    <h2 class="card-title mt-5">作者：</h2>
+    <h2 class="card-title-sm mt-2">作者：</h2>
     <div class="card-content">
-        <div class="flex flex-wrap gap-2">
+        <div class="flex flex-wrap gap-1">
             @if ($author && !in_array($author->author_id, $authors->pluck('author_id')->toArray()))
             <a href="{{ route('poem.index', ['author_id' => $author->author_id]) }}" class="link badge !text-xs primary">
                 {{ $author->name }}
@@ -42,9 +42,9 @@
         </div>
     </div>
 
-    <h2 class="card-title mt-5">朝代：</h2>
+    <h2 class="card-title-sm mt-2">朝代：</h2>
     <div class="card-content">
-        <div class="flex flex-wrap gap-2">
+        <div class="flex flex-wrap gap-1">
             @foreach ($dynasties as $d)
             <a data-id="{{ $d->id }}" href="{{ route('poem.index', ['dynasty_id' => $d->id]) }}" class="link badge !text-xs {{ ($dynasty && $dynasty->id == $d->id) ? 'primary' : '' }}">
                 {{ $d->name }}
@@ -55,7 +55,7 @@
 
     <!-- <h2 class="card-title mt-2">形式：</h2>
     <div class="card-content">
-        <div class="flex flex-wrap gap-2">
+        <div class="flex flex-wrap gap-1">
             @foreach ($forms as $form)
             <a href="{{ route('poem.index', ['type' => $form['type']]) }}" class="link badge !text-xs">
                 {{ $form['name'] }}

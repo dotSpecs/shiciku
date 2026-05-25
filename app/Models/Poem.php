@@ -2,13 +2,21 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Favoritable;
+use Elastic\ScoutDriverPlus\Searchable as ScoutDriverPlusSearchable;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Laravel\Scout\Searchable;
 
 class Poem extends Model
 {
+    use ScoutDriverPlusSearchable;
+    use Favoritable;
+
     protected $table = 'poems';
 
     public $incrementing = false;
@@ -29,21 +37,52 @@ class Poem extends Model
 
     public function fanyis(): HasMany
     {
-        return $this->hasMany(PoemFanyi::class, 'poem_id', 'id')->orderBy('order');
+        return $this->hasMany(PoemFanyi::class, 'poem_id', 'id')
+            ->select(['id', 'poem_id', 'name', 'content', 'order'])
+            ->orderBy('order');
     }
 
     public function shangxis(): HasMany
     {
-        return $this->hasMany(PoemShangxi::class, 'poem_id', 'id')->orderBy('order');
+        return $this->hasMany(PoemShangxi::class, 'poem_id', 'id')
+            ->select(['id', 'poem_id', 'name', 'content', 'order'])
+            ->orderBy('order');
     }
 
     public function tags(): BelongsToMany
     {
-        return $this->belongsToMany(Tag::class, 'poem_tag', 'poem_id', 'tag_id');
+        return $this->belongsToMany(Tag::class, 'poem_tag', 'poem_id', 'tag_id')
+            ->select(['tags.id', 'tags.name']);
     }
 
     public function mingjus(): HasMany
     {
-        return $this->hasMany(Mingju::class, 'source_poem_id', 'id');
+        return $this->hasMany(Mingju::class, 'source_poem_id', 'id')
+            ->select(['id', 'source_poem_id', 'mingju_id', 'name']);
+    }
+
+    public function searchableAs(): string
+    {
+        return 'poems_index';
+    }
+
+    public function toSearchableArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'content' => $this->content,
+            'author' => $this->author ? $this->author->name : null,
+        ];
+    }
+
+    public function makeSearchableUsing(Collection $models): Collection
+    {
+        return $models->load('author');
+    }
+
+    protected function makeAllSearchableUsing(Builder $query): Builder
+    {
+        return $query->with('author');
     }
 }

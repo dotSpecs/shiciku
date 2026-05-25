@@ -3,23 +3,14 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
-use App\Models\Author;
-use App\Models\Book;
-use App\Models\Poem;
-use App\Models\Tag;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
+use App\Services\DailyPoemService;
 
 class IndexController extends Controller
 {
-    public function index()
+    public function index(DailyPoemService $dailyPoemService)
     {
-       
+        $daily = $dailyPoemService->today();
 
-
-
-        
-
-        return view('web.index');
+        return view('web.index', compact('daily'));
     }
 }

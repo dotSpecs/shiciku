@@ -25,6 +25,7 @@ class HotTag extends Component
     {
         $tags = Cache::remember('index-hot-tags-' . $this->limit, 60 * 5, function () {
             return Tag::query()
+                ->select(['id', 'name'])
                 ->orderBy('order')
                 ->where('order', '<', 9999)
                 ->limit($this->limit)

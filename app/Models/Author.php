@@ -18,13 +18,13 @@ class Author extends Model
 
     public function getPicAttribute($value): ?string
     {
+        return $value;
+
         if ($value) {
             return $value;
         }
 
-        $pic = $this->pic_big ?: $this->pic_small;
-
-        return $pic ? 'https://ziyuan.guwendao.net/' . $pic : '';
+        return $this->pic_small ? 'https://ziyuan.guwendao.net/' . $this->pic_small : '';
     }
 
     public function dynasty(): BelongsTo
@@ -34,7 +34,9 @@ class Author extends Model
 
     public function ziliaos(): HasMany
     {
-        return $this->hasMany(AuthorZiliao::class, 'author_id', 'id')->orderBy('order');
+        return $this->hasMany(AuthorZiliao::class, 'author_id', 'id')
+            ->select(['id', 'author_id', 'name', 'content', 'order'])
+            ->orderBy('order');
     }
 
     public function poems(): HasMany

@@ -7,37 +7,47 @@ use App\Models\Author;
 use App\Models\Dynasty;
 use App\Models\Poem;
 use App\Models\Tag;
+use App\Models\Zhuanti;
 use App\Services\Utils\AudioService;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Cache;
 
 class PoemController extends Controller
 {
     public function index()
     {
-        $page = request()->get('page', 1);
+        $page = (int) request()->get('page', 1);
         $author_id = request()->get('author_id');
         $dynasty_id = request()->get('dynasty_id');
         $tag_id = request()->get('tag_id');
         // $type = request()->get('type');
 
-        $dynasties = Dynasty::query()
-            ->where('id', '<', 13)
-            ->select('id', 'name')
-            ->orderBy('id', 'asc')
-            ->get();
+        $dynasties = Cache::remember('poem-index-dynasties', 3600, function () {
+            return Dynasty::query()
+                ->select('id', 'name')
+                ->where('id', '<', 13)
+                ->orderBy('id', 'asc')
+                ->get();
+        });
 
-        $tags = Tag::query()->select('id', 'name')
-            ->orderBy('order')
-            ->limit(36)
-            ->get();
+        $tags = Cache::remember('poem-index-tags', 3600, function () {
+            return Tag::query()
+                ->select('id', 'name', 'zhuanti_id')
+                ->with('zhuanti:id,alias')
+                ->orderBy('order')
+                ->limit(22)
+                ->get();
+        });
 
-        $authors = Author::query()
-            ->select('id', 'author_id', 'name')
-            ->orderBy('order')
-            ->where('order', '<', 999999)
-            ->limit(36)
-            ->get();
+        $authors = Cache::remember('poem-index-authors', 3600, function () {
+            return Author::query()
+                ->select('id', 'author_id', 'name')
+                ->orderBy('order')
+                ->where('order', '<', 999999)
+                ->limit(26)
+                ->get();
+        });
 
 
         $author = null;
@@ -46,26 +56,32 @@ class PoemController extends Controller
 
         $query = Poem::query()
             ->select('id', 'poem_id', 'name', 'content', 'dynasty_id', 'author_id')
-            ->with(['author', 'dynasty'])
+            ->with(['author:id,author_id,name', 'dynasty:id,name'])
             ->orderBy('order')
             ->orderBy('id');
 
         if ($author_id) {
-            $author = Author::where('author_id', $author_id)->first();
+            $author = Cache::remember('author-by-author_id-' . $author_id, 3600, function () use ($author_id) {
+                return Author::select('id', 'author_id', 'name')->where('author_id', $author_id)->first();
+            });
             if ($author) {
                 $query->where('author_id', $author->id);
             }
         }
 
         if ($dynasty_id) {
-            $dynasty = Dynasty::where('id', $dynasty_id)->first();
+            $dynasty = Cache::remember('dynasty-' . $dynasty_id, 3600, function () use ($dynasty_id) {
+                return Dynasty::select('id', 'name')->where('id', $dynasty_id)->first();
+            });
             if ($dynasty) {
                 $query->where('dynasty_id', $dynasty->id);
             }
         }
 
         if ($tag_id) {
-            $tag = Tag::where('id', $tag_id)->first();
+            $tag = Cache::remember('tag-' . $tag_id, 3600, function () use ($tag_id) {
+                return Tag::select('id', 'name')->where('id', $tag_id)->first();
+            });
             if ($tag) {
                 $query->whereHas('tags', function ($query) use ($tag) {
                     $query->where('tag_id', $tag->id);
@@ -73,7 +89,21 @@ class PoemController extends Controller
             }
         }
 
-        $poems = $query->simplePaginate(15)->withQueryString();
+        if ($page > 50) {
+            $poems = new Paginator(collect(), 15, $page, [
+                'path' => Paginator::resolveCurrentPath(),
+                'pageName' => 'page',
+            ]);
+            $poems->appends(request()->query());
+        } else {
+            $poems = $query->simplePaginate(15)->withQueryString();
+            if ($page >= 50 && $poems->hasMorePages()) {
+                $poems = (new Paginator($poems->items(), 15, $page, [
+                    'path' => Paginator::resolveCurrentPath(),
+                    'pageName' => 'page',
+                ]))->appends(request()->query());
+            }
+        }
 
         $forms = [
             [
@@ -108,8 +138,17 @@ class PoemController extends Controller
         }
 
         $poem = Cache::remember('poem-of-' . $poem_id, 300, function () use ($poem_id) {
-            return Poem::where('poem_id', $poem_id)
-                ->with(['author', 'dynasty', 'tags', 'mingjus', 'fanyis', 'shangxis'])
+            return Poem::query()
+                ->select(['id', 'poem_id', 'name', 'content', 'yizhu_content', 'dynasty_id', 'author_id'])
+                ->where('poem_id', $poem_id)
+                ->with([
+                    'author:id,author_id,name,content,pic,pic_small',
+                    'dynasty:id,name',
+                    'tags',
+                    'mingjus',
+                    'fanyis',
+                    'shangxis',
+                ])
                 ->first();
         });
 
@@ -139,9 +178,8 @@ class PoemController extends Controller
         }
 
         $authors = $type === 'author' ? Author::query()
-            ->select(['id', 'author_id', 'name', 'dynasty_id', 'pic_small', 'pic_big', 'content'])
-            ->with('dynasty')
-            ->withCount('poems')
+            ->select(['id', 'author_id', 'name', 'dynasty_id', 'pic', 'pic_small', 'content'])
+            ->with('dynasty:id,name')
             ->where('name', 'like', '%' . $query . '%')
             ->orderBy('order')
             ->simplePaginate()
@@ -214,14 +252,37 @@ class PoemController extends Controller
             ]
         ];
         $poems = $type === 'poem' ? Poem::searchQuery($searchQuery)
+            // ->select(['id', 'poem_id', 'name', 'content', 'dynasty_id', 'author_id'])
             ->paginate(15)
             ->onlyModels()
             ->through(function ($poem) {
-                return $poem->load(['author', 'dynasty']);
+                return $poem->load(['author:id,author_id,name', 'dynasty:id,name']);
             })->withQueryString() : null;
 
-
         return view('web.poem.search', compact('poems', 'authors', 'type', 'query', 'page'));
+    }
+
+    public function zhuanti($alias)
+    {
+        $zhuanti = Cache::remember('zhuanti-of-' . $alias, 1800, function () use ($alias) {
+            return Zhuanti::query()
+                ->select(['id', 'name', 'alias'])
+                ->where('alias', $alias)
+                ->with(['chapters' => function ($q) {
+                    $q->select(['id', 'zhuanti_id', 'name', 'sub_title', 'sort'])
+                        ->with(['poems' => function ($pq) {
+                            $pq->select(['poems.id', 'poems.poem_id', 'poems.name', 'poems.author_id', 'poems.dynasty_id'])
+                                ->with(['author:id,author_id,name', 'dynasty:id,name']);
+                        }]);
+                }])
+                ->first();
+        });
+
+        if (!$zhuanti) {
+            return redirect()->route('poem.index');
+        }
+
+        return view('web.poem.zhuanti', compact('zhuanti'));
     }
 
     public function audio($poem_id)

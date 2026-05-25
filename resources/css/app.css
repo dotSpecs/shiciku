@@ -14,6 +14,10 @@ body {
     @apply text-lg font-bold dark:text-slate-100 mb-5;
 }
 
+.card-title-sm {
+    @apply text-lg font-bold dark:text-slate-100 mb-2;
+}
+
 .card-content {
     @apply text-base dark:text-slate-100;
 }

@@ -1,46 +1,32 @@
 @extends('web.layout')
 
-@section('title', '古籍列表 - 第' . $page . '页')
+@section('title', '古籍列表' . ($class ? ' - ' . $class : '') . ($type ? '·' . $type : '') . ' - 第' . $page . '页')
 
-@section('keywords', '古籍列表,')
-@section('description', '古籍列表 - 第' . $page . '页,')
+@section('keywords', '古籍列表,' . ($class ? $class . ',' : '') . ($type ? $type . ',' : ''))
+@section('description', '古籍列表' . ($class ? ' - ' . $class : '') . ($type ? '·' . $type : '') . ' - 第' . $page . '页,')
 
 @section('content')
 
 @if ($types)
 <div class="card mb-8">
-    <h2 class="card-title">经部</h2>
+    @foreach ($types as $c => $typeList)
+    @if (!empty($typeList))
+    <h2 class="card-title-sm @if (!$loop->first) mt-2 @endif">
+        <a href="{{ route('book.index', ['class' => $c]) }}" class="link {{ ($class === $c && !$type) ? 'primary' : '' }}">
+            {{ $c }}
+        </a>：
+    </h2>
     <div class="card-content">
-        @foreach ($types["经部"] as $type)
-        <a href="{{ route('book.index', ['type' => $type]) }}" class="link badge !text-xs">
-            {{ $type }}
-        </a>
-        @endforeach
+        <div class="flex flex-wrap gap-1">
+            @foreach ($typeList as $t)
+            <a href="{{ route('book.index', ['class' => $c, 'type' => $t]) }}" class="link badge !text-xs {{ ($class === $c && $type === $t) ? 'primary' : '' }}">
+                {{ $t }}
+            </a>
+            @endforeach
+        </div>
     </div>
-    <h2 class="card-title mt-5">史部</h2>
-    <div class="card-content">
-        @foreach ($types["史部"] as $type)
-        <a href="{{ route('book.index', ['type' => $type]) }}" class="link badge !text-xs">
-            {{ $type }}
-        </a>
-        @endforeach
-    </div>
-    <h2 class="card-title mt-5">子部</h2>
-    <div class="card-content">
-        @foreach ($types["子部"] as $type)
-        <a href="{{ route('book.index', ['type' => $type]) }}" class="link badge !text-xs">
-            {{ $type }}
-        </a>
-        @endforeach
-    </div>
-    <h2 class="card-title mt-5">集部</h2>
-    <div class="card-content">
-        @foreach ($types["集部"] as $type)
-        <a href="{{ route('book.index', ['type' => $type]) }}" class="link badge !text-xs">
-            {{ $type }}
-        </a>
-        @endforeach
-    </div>
+    @endif
+    @endforeach
 </div>
 @endif
 @foreach ($books as $book)

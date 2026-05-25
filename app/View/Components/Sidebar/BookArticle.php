@@ -5,6 +5,7 @@ namespace App\View\Components\Sidebar;
 use App\Models\Book;
 use Closure;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\View\Component;
 
 class BookArticle extends Component
@@ -22,9 +23,16 @@ class BookArticle extends Component
      */
     public function render(): View|Closure|string
     {
-        $book = Book::where('book_id', $this->bookId)
-            ->with('chapters', 'chapters.articles', 'author')
-            ->first();
+        $book = Cache::remember('book-toc-' . $this->bookId, 1800, function () {
+            return Book::query()
+                ->select(['id', 'book_id', 'name'])
+                ->where('book_id', $this->bookId)
+                ->with([
+                    'chapters:id,book_id,name,order',
+                    'chapters.articles:id,article_id,chapter_id,name,order',
+                ])
+                ->first();
+        });
 
         if (!$book) {
             return '';

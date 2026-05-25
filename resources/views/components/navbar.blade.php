@@ -27,6 +27,7 @@
                 <div class="flex flex-col gap-5 mt-5 sm:flex-row sm:items-center sm:mt-0 sm:ps-10">
                     <a class="font-medium @if(request()->segment(1) == '') active @endif link" href="{{ route('index') }}">首页</a>
                     <a class="font-medium @if(request()->segment(1) == 'poem') active @endif link" href="{{ route('poem.index') }}">诗词</a>
+                    <a class="font-medium @if(request()->segment(1) == 'mingju') active @endif link" href="{{ route('mingju.index') }}">名句</a>
                     <a class="font-medium @if(request()->segment(1) == 'author') active @endif link" href="{{ route('author.index') }}">作者</a>
                     <a class="font-medium @if(request()->segment(1) == 'book') active @endif link" href="{{ route('book.index') }}">古籍</a>
                 </div>

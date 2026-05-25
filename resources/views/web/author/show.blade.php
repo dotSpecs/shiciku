@@ -19,8 +19,8 @@
         <!-- @if($author->books_count > 0)
                 <a href="{{ route('book.index', ['author_id' => $author->author_id]) }}" class="link primary">&raquo; {{ $author->books_count }}部作品</a>
                 @endif -->
-        @if($author->poems_count > 0)
-        <a href="{{ route('poem.index', ['author_id' => $author->author_id]) }}" class="link primary">&raquo; {{ $author->poems_count }}首诗词</a>
+        @if($author->shiwen_num > 0)
+        <a href="{{ route('poem.index', ['author_id' => $author->author_id]) }}" class="link primary">&raquo; {{ $author->shiwen_num }}首诗词</a>
         @endif
     </div>
 </div>
@@ -35,7 +35,7 @@
 @endforeach
 
 <div class="card text-center">
-    <a href="{{ route('poem.index', ['author_id' => $author->author_id]) }}" class="link primary">&raquo; {{ $author->poems_count }}首诗词</a>
+    <a href="{{ route('poem.index', ['author_id' => $author->author_id]) }}" class="link primary">&raquo; {{ $author->shiwen_num }}首诗词</a>
 </div>
 
 @endsection
