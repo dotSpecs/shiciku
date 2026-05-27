@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Api\Concerns\ResolvesFavoriteStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Book;
 use App\Models\BookArticle;
@@ -11,6 +12,8 @@ use Illuminate\Http\Request;
 
 class BookController extends Controller
 {
+    use ResolvesFavoriteStatus;
+
     private const PER_PAGE = 10;
     private const MAX_PAGE = 100;
 
@@ -47,7 +50,7 @@ class BookController extends Controller
         ]);
     }
 
-    public function show(string $book_id): JsonResponse
+    public function show(Request $request, string $book_id): JsonResponse
     {
         $book = Book::query()
             ->select('id', 'book_id', 'name', 'content', 'class', 'type', 'author_id', 'dynasty_id')
@@ -69,10 +72,10 @@ class BookController extends Controller
             return response()->json(['error' => 'book_not_found'], 404);
         }
 
-        return response()->json($this->transformDetail($book));
+        return response()->json($this->transformDetail($book, $this->isFavorited($request, $book)));
     }
 
-    public function article(string $article_id): JsonResponse
+    public function article(Request $request, string $article_id): JsonResponse
     {
         $article = BookArticle::query()
             ->where('article_id', $article_id)
@@ -90,7 +93,13 @@ class BookController extends Controller
 
         [$previous, $next] = $this->neighbors($article->book_id, $article);
 
-        return response()->json($this->transformArticle($article, $article->book, $previous, $next));
+        return response()->json($this->transformArticle(
+            $article,
+            $article->book,
+            $previous,
+            $next,
+            $this->isFavorited($request, $article),
+        ));
     }
 
     private function transformBrief(Book $book): array
@@ -109,11 +118,12 @@ class BookController extends Controller
         ];
     }
 
-    private function transformDetail(Book $book): array
+    private function transformDetail(Book $book, bool $favorited): array
     {
         return [
             'book_id' => $book->book_id,
             'name' => $book->name,
+            'favorited' => $favorited,
             'content' => $book->content,
             'class' => $book->class,
             'type' => $book->type,
@@ -135,7 +145,7 @@ class BookController extends Controller
         ];
     }
 
-    private function transformArticle(BookArticle $article, Book $book, ?array $previous, ?array $next): array
+    private function transformArticle(BookArticle $article, Book $book, ?array $previous, ?array $next, bool $favorited): array
     {
         $supplements = $article->supplements
             ->map(fn ($s) => [
@@ -149,6 +159,7 @@ class BookController extends Controller
         return [
             'article_id' => $article->article_id,
             'name' => $article->name,
+            'favorited' => $favorited,
             'content' => $article->content,
             'chapter' => $article->chapter ? [
                 'id' => $article->chapter->id,

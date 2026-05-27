@@ -2,16 +2,21 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Api\Concerns\ResolvesFavoriteStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Author;
 use App\Models\Poem;
+use App\Services\Utils\SignedAudioUrl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PoemController extends Controller
 {
+    use ResolvesFavoriteStatus;
+
     private const PER_PAGE = 15;
     private const MAX_PAGE = 50;
+    private const ALLOWED_TYPES = ['诗', '词', '曲', '文言文'];
 
     public function index(Request $request): JsonResponse
     {
@@ -19,9 +24,11 @@ class PoemController extends Controller
         $tagId = $request->get('tag_id');
         $dynastyId = $request->get('dynasty_id');
         $authorSlug = $request->get('author_id');
+        $type = $request->get('type');
+        $perPage = $this->resolvePerPage($request->get('limit'));
 
         if ($page > self::MAX_PAGE) {
-            return $this->emptyPage($page);
+            return $this->emptyPage($page, $perPage);
         }
 
         $query = Poem::query()
@@ -37,7 +44,7 @@ class PoemController extends Controller
         if ($authorSlug) {
             $author = Author::select('id')->where('author_id', $authorSlug)->first();
             if (!$author) {
-                return $this->emptyPage($page);
+                return $this->emptyPage($page, $perPage);
             }
             $query->where('author_id', $author->id);
         }
@@ -50,7 +57,11 @@ class PoemController extends Controller
             $query->whereHas('tags', fn ($q) => $q->where('tag_id', (int) $tagId));
         }
 
-        $paginator = $query->simplePaginate(self::PER_PAGE, ['*'], 'page', $page);
+        if ($type && in_array($type, self::ALLOWED_TYPES, true)) {
+            $query->where('type', $type);
+        }
+
+        $paginator = $query->simplePaginate($perPage, ['*'], 'page', $page);
 
         return response()->json([
             'data' => $paginator->getCollection()->map(fn (Poem $p) => $this->transform($p))->all(),
@@ -60,13 +71,13 @@ class PoemController extends Controller
         ]);
     }
 
-    public function show(string $poem_id): JsonResponse
+    public function show(Request $request, string $poem_id): JsonResponse
     {
         $poem = Poem::query()
-            ->select('id', 'poem_id', 'name', 'content', 'yizhu_content', 'dynasty_id', 'author_id')
+            ->select('id', 'poem_id', 'name', 'content', 'yzsy', 'langsong_url', 'dynasty_id', 'author_id')
             ->where('poem_id', $poem_id)
             ->with([
-                'author:id,author_id,name',
+                'author:id,author_id,name,pic',
                 'dynasty:id,name',
                 'tags:id,name',
                 'fanyis',
@@ -79,7 +90,31 @@ class PoemController extends Controller
             return response()->json(['error' => 'poem_not_found'], 404);
         }
 
-        return response()->json($this->transformDetail($poem));
+        return response()->json($this->transformDetail($poem, $this->isFavorited($request, $poem)));
+    }
+
+    public function yinYizhu(string $poem_id): JsonResponse
+    {
+        $poem = Poem::query()
+            ->select('id', 'poem_id', 'name_py', 'content_py', 'author_py', 'chaodai_py', 'yizhu_content', 'yzsy')
+            ->where('poem_id', $poem_id)
+            ->first();
+
+        if (!$poem) {
+            return response()->json(['error' => 'poem_not_found'], 404);
+        }
+
+        return response()->json([
+            'yin' => $poem->supportsYin() ? [
+                'name' => $poem->name_py,
+                'author' => $poem->author_py,
+                'dynasty' => $poem->chaodai_py,
+                'content' => $poem->content_py,
+            ] : null,
+            'yizhu' => $poem->supportsYizhu() ? [
+                'content' => $poem->yizhu_content,
+            ] : null,
+        ]);
     }
 
     private function transform(Poem $poem): array
@@ -100,13 +135,18 @@ class PoemController extends Controller
         ];
     }
 
-    private function transformDetail(Poem $poem): array
+    private function transformDetail(Poem $poem, bool $favorited): array
     {
         return [
             'poem_id' => $poem->poem_id,
             'name' => $poem->name,
+            'favorited' => $favorited,
             'content' => $poem->content,
-            'yizhu_content' => $poem->yizhu_content,
+            'supports' => [
+                'yin' => $poem->supportsYin(),
+                'yizhu' => $poem->supportsYizhu(),
+            ],
+            'audio' => SignedAudioUrl::generate($poem->langsong_url),
             'dynasty' => $poem->dynasty ? [
                 'id' => $poem->dynasty->id,
                 'name' => $poem->dynasty->name,
@@ -114,6 +154,7 @@ class PoemController extends Controller
             'author' => $poem->author ? [
                 'author_id' => $poem->author->author_id,
                 'name' => $poem->author->name,
+                'pic' => $poem->author->pic,
             ] : null,
             'tags' => $poem->tags->map(fn ($t) => ['id' => $t->id, 'name' => $t->name])->values()->all(),
             'fanyis' => $poem->fanyis->map(fn ($f) => [
@@ -135,12 +176,24 @@ class PoemController extends Controller
         ];
     }
 
-    private function emptyPage(int $page): JsonResponse
+    private function resolvePerPage(mixed $limit): int
+    {
+        if ($limit === null || $limit === '') {
+            return self::PER_PAGE;
+        }
+        $n = (int) $limit;
+        if ($n < 1) {
+            return self::PER_PAGE;
+        }
+        return min($n, self::PER_PAGE);
+    }
+
+    private function emptyPage(int $page, int $perPage = self::PER_PAGE): JsonResponse
     {
         return response()->json([
             'data' => [],
             'current_page' => $page,
-            'per_page' => self::PER_PAGE,
+            'per_page' => $perPage,
             'has_more' => false,
         ]);
     }

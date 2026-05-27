@@ -11,6 +11,7 @@ class Favorite extends Model
     public const TYPE_POEM = 'poem';
     public const TYPE_MINGJU = 'mingju';
     public const TYPE_BOOK = 'book';
+    public const TYPE_BOOK_ARTICLE = 'book_article';
 
     protected $table = 'favorites';
 

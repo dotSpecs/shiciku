@@ -61,6 +61,16 @@ class Poem extends Model
             ->select(['id', 'source_poem_id', 'mingju_id', 'name']);
     }
 
+    public function supportsYin(): bool
+    {
+        return is_string($this->yzsy) && str_contains($this->yzsy, '音');
+    }
+
+    public function supportsYizhu(): bool
+    {
+        return is_string($this->yzsy) && str_contains($this->yzsy, '注');
+    }
+
     public function searchableAs(): string
     {
         return 'poems_index';
@@ -73,6 +83,7 @@ class Poem extends Model
             'name' => $this->name,
             'content' => $this->content,
             'author' => $this->author ? $this->author->name : null,
+            'order' => (int) $this->order,
         ];
     }
 

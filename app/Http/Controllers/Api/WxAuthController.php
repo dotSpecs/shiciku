@@ -69,6 +69,7 @@ class WxAuthController extends Controller
             'token' => $issued['token'],
             'session_key' => $session['session_key'],
             'expires_in' => $issued['expires_in'],
+            ...$this->userPayload($user),
         ]);
     }
 
@@ -81,5 +82,34 @@ class WxAuthController extends Controller
             'avatar' => $user->avatar,
             'phone' => $user->phone,
         ]);
+    }
+
+    public function updateMe(Request $request): JsonResponse
+    {
+        $allowed = ['name', 'avatar'];
+        $extra = array_diff(array_keys($request->all()), $allowed);
+        if ($extra) {
+            return response()->json(['error' => 'invalid_fields'], 400);
+        }
+
+        $data = $request->validate([
+            'name' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'avatar' => ['sometimes', 'nullable', 'string', 'max:255'],
+        ]);
+
+        $user = $request->user();
+        $user->fill($data);
+        $user->save();
+
+        return response()->json($this->userPayload($user));
+    }
+
+    private function userPayload(User $user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'avatar' => $user->avatar,
+        ];
     }
 }

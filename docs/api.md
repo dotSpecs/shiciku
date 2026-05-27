@@ -53,6 +53,7 @@
 ```
 
 - `per_page` 由服务端固定（当前 15）
+- 列表接口支持可选 `limit` 参数：1 ≤ limit ≤ per_page，超出按 per_page 截断，非法值回退默认。常见用法：作者详情等"预览前 N 条"的场景传 `limit=3` 减少传输
 - `page` 上限 50，超出返回空 `data` + `has_more=false`
 - 无 `total` / `last_page`（避免大表 COUNT 性能开销）
 
@@ -62,7 +63,310 @@
 
 ---
 
+## 收藏接口
+
+收藏接口均需要完整 `wx.sign` 鉴权，`id` 使用各资源对外 slug。
+
+### 支持类型
+
+| type | 说明 | id 字段 |
+|---|---|---|
+| `poem` | 诗词 | `poem_id` |
+| `mingju` | 名句 | `mingju_id` |
+| `book` | 古籍整本 | `book_id` |
+| `book_article` | 古籍篇章 | `article_id` |
+
+### `POST /api/favorites/{type}/{id}` — 收藏
+
+**响应**
+
+```json
+{
+  "favorited": true,
+  "favorite_id": 123
+}
+```
+
+重复收藏会保持幂等，仍返回 `favorited=true`。
+
+### `DELETE /api/favorites/{type}/{id}` — 取消收藏
+
+**响应**
+
+```json
+{
+  "favorited": false
+}
+```
+
+未收藏时调用也保持幂等。
+
+### `GET /api/favorites/{type}/{id}` — 收藏状态
+
+**响应**
+
+```json
+{
+  "favorited": true
+}
+```
+
+资源不存在返回 `404`：
+
+```json
+{
+  "error": "target_not_found"
+}
+```
+
+### `GET /api/favorites` — 我的收藏列表
+
+用于“我的收藏”页面。支持按类型筛选；不传 `type` 时返回全部类型，按收藏时间倒序。
+
+**Query 参数**
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `type` | string | 否 | `poem` / `mingju` / `book` / `book_article`，不传返回全部 |
+| `page` | int | 否 | 页码，默认 1，上限 50 |
+
+**响应**
+
+```json
+{
+  "data": [
+    {
+      "type": "poem",
+      "favorited_at": "2026-05-27 12:00:00",
+      "item": {
+        "poem_id": "tb2yd7acup",
+        "name": "桃花源记",
+        "dynasty": { "id": 3, "name": "魏晋" },
+        "author": { "author_id": "taoyuanming", "name": "陶渊明" }
+      }
+    },
+    {
+      "type": "book_article",
+      "favorited_at": "2026-05-27 12:01:00",
+      "item": {
+        "article_id": "xueer",
+        "name": "学而",
+        "chapter": { "id": 1, "name": "卷一" },
+        "book": {
+          "book_id": "lunyu",
+          "name": "论语"
+        }
+      }
+    }
+  ],
+  "current_page": 1,
+  "per_page": 20,
+  "has_more": true
+}
+```
+
+不同 `type` 的 `item` 字段：
+
+| type | item 主要字段 |
+|---|---|
+| `poem` | `poem_id`, `name`, `dynasty`, `author` |
+| `mingju` | `mingju_id`, `name`, `source`, `guishu`, `author` |
+| `book` | `book_id`, `name`, `class`, `type`, `dynasty`, `author` |
+| `book_article` | `article_id`, `name`, `chapter`, `book` |
+
+`type` 非法返回 `400`：
+
+```json
+{
+  "error": "invalid_type"
+}
+```
+
+小程序古籍页顶部展示用户收藏古籍时，调用 `GET /api/favorites?type=book`。
+
+---
+
+## 工具接口
+
+### `POST /api/audio` — 生成诗词朗读音频
+
+当诗词详情接口的 `audio` 字段为 `null` 时，可调用该接口临时生成朗读音频。
+
+**请求**
+
+```json
+{
+  "id": "tb2yd7acup",
+  "type": "poem"
+}
+```
+
+`type` 可不传，默认 `poem`。后续可扩展其他朗读类型。
+
+**响应**
+
+成功时返回 base64 音频内容：
+
+```json
+{
+  "status": "success",
+  "body": "base64-audio"
+}
+```
+
+失败时：
+
+```json
+{
+  "status": "error",
+  "message": "生成失败，请稍候重试！"
+}
+```
+
+诗词不存在返回 `404`：
+
+```json
+{
+  "status": "error",
+  "message": "诗词不存在"
+}
+```
+
+暂不支持的 `type` 返回 `400`：
+
+```json
+{
+  "error": "unsupported_type"
+}
+```
+
+### `GET /api/upload/token` — 获取头像上传 Token
+
+只支持头像上传，七牛 token 有效期 10 分钟。
+
+**Query 参数**
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `scope` | string | 否 | 只能为 `avatar`，默认 `avatar` |
+| `ext` | string | 否 | 文件扩展名，支持 `jpg` / `jpeg` / `png` / `gif` / `webp` / `bmp` |
+| `filename` | string | 否 | 未传 `ext` 时从文件名提取扩展名 |
+
+**响应**
+
+```json
+{
+  "token": "qiniu-upload-token",
+  "key": "avatars/poems/123/1780000000.jpg",
+  "expires": 600,
+  "host": "https://up-z1.qiniup.com/",
+  "scope": "avatar"
+}
+```
+
+`key` 格式固定为 `avatars/poems/{uid}/{time}.{ext}`。非法扩展名回退为 `jpg`。
+
+`scope` 非 `avatar` 返回 `400`：
+
+```json
+{
+  "error": "invalid_scope"
+}
+```
+
+---
+
 ## 内容接口
+
+### `GET /api/home` — 首页聚合
+
+小程序首页一次拉取所需全部数据。除每日一诗外，其余 4 个 section 在服务端缓存 5 分钟。
+
+**响应**
+
+```json
+{
+  "daily_poem": {
+    "poem_id": "tb2yd7acup",
+    "name": "桃花源记",
+    "favorited": false,
+    "content": "<p>……</p>",
+    "audio": "https://audio.070022.xyz/poem/tb2yd7acup.mp3?ts=1748160000&sign=8e1c…",
+    "author": { "author_id": "taoyuanming", "name": "陶渊明" },
+    "dynasty": { "id": 3, "name": "魏晋" }
+  },
+  "recommend_authors": [
+    {
+      "author_id": "dufu",
+      "name": "杜甫",
+      "pic": "https://cdn.meirishici.com/author/dufu.jpg",
+      "dynasty": { "id": 6, "name": "唐" }
+    }
+  ],
+  "featured_tags": [
+    {
+      "id": 23,
+      "name": "小学古诗",
+      "zhuanti": { "alias": "xiaoxue", "name": "小学古诗" }
+    },
+    {
+      "id": 20,
+      "name": "送别",
+      "zhuanti": null
+    }
+  ],
+  "featured_books": [
+    {
+      "book_id": "lunyu",
+      "name": "论语",
+      "author": { "author_id": "kongzi", "name": "孔子" }
+    }
+  ],
+  "quotes": [
+    {
+      "mingju_id": "mj-jyl",
+      "name": "举头望明月，低头思故乡。",
+      "source": "静夜思",
+      "author": { "author_id": "libai", "name": "李白" }
+    }
+  ]
+}
+```
+
+**字段说明**
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `daily_poem` | object \| null | 当日推荐诗词，懒生成；为 null 表示未能选出（极端情况） |
+| `daily_poem.poem_id` | string | 用于跳转诗词详情 |
+| `daily_poem.favorited` | bool | 当前用户是否已收藏该诗词；实时查询，不进入缓存 |
+| `daily_poem.audio` | string \| null | 朗读音频签名 URL（30 分钟有效）；无朗读资源时为 `null` |
+| `recommend_authors[]` | array (10) | 从 `order < 999999` 的作者池随机 10 位 |
+| `recommend_authors[].pic` | string \| null | 头像 URL |
+| `featured_tags[]` | array (≤8) | 固定 8 个 tag（id 23/35/67/20/552/52/49/63），按该顺序返回；DB 中缺失的 id 跳过 |
+| `featured_tags[].zhuanti` | object \| null | 该 tag 关联的专题。有专题：跳转 `/pages/zhuanti/detail?alias=…`；无专题：跳转诗词列表 `tag_id=…` |
+| `featured_tags[].zhuanti.alias` | string | 专题 slug |
+| `featured_books[]` | array (10) | 随机 10 本古籍 |
+| `quotes[]` | array (3) | 随机 3 条 `guishu=1`（诗文出处）且有 `source_poem_id` 的名句 |
+
+**缓存策略**
+
+| key | TTL | 备注 |
+|---|---|---|
+| `home:authors` | 5 min | |
+| `home:tags` | 5 min | tag/zhuanti 关系几乎不变，可考虑延长 |
+| `home:books` | 5 min | |
+| `home:quotes` | 5 min | |
+
+`daily_poem` 不进缓存，直接走 `DailyPoemService::today()`（已天级幂等）。
+
+**示例**
+
+```bash
+curl 'http://localhost/api/home'
+```
+
+---
 
 ### `GET /api/poems` — 诗词列表
 
@@ -73,7 +377,9 @@
 | `tag_id` | int | 否 | 合集 ID（Tag PK） |
 | `dynasty_id` | int | 否 | 朝代 ID |
 | `author_id` | string | 否 | 作者 slug |
+| `type` | string | 否 | 类型，仅接受 `诗` / `词` / `曲` / `文言文`，其他值忽略 |
 | `page` | int | 否 | 页码，默认 1，上限 50 |
+| `limit` | int | 否 | 每页条数，1 ≤ limit ≤ 15（超出截断为 15） |
 
 **响应**
 
@@ -138,6 +444,9 @@ curl 'http://localhost/api/poems?author_id=pchx3eyuar'
 
 # 组合：唐诗三百首 + 唐代
 curl 'http://localhost/api/poems?tag_id=10&dynasty_id=6'
+
+# 只看词
+curl 'http://localhost/api/poems?type=词'
 ```
 
 ---
@@ -156,10 +465,12 @@ curl 'http://localhost/api/poems?tag_id=10&dynasty_id=6'
 {
   "poem_id": "tb2yd7acup",
   "name": "桃花源记",
+  "favorited": false,
   "content": "<p>……</p>",
-  "yizhu_content": "<p>译注……</p>",
+  "supports": { "yin": true, "yizhu": true },
+  "audio": "https://audio.070022.xyz/poem/tb2yd7acup.mp3?ts=1748160000&sign=8e1c…",
   "dynasty": { "id": 3, "name": "魏晋" },
-  "author": { "author_id": "pchx3eyuar", "name": "陶渊明" },
+  "author": { "author_id": "pchx3eyuar", "name": "陶渊明", "pic": "https://cdn.meirishici.com/author/taoyuanming.jpg" },
   "tags": [
     { "id": 51, "name": "专升本" }
   ],
@@ -181,10 +492,14 @@ curl 'http://localhost/api/poems?tag_id=10&dynasty_id=6'
 |---|---|---|
 | `poem_id` | string | slug |
 | `name` | string | 诗词标题 |
+| `favorited` | bool | 当前用户是否已收藏 |
 | `content` | string (HTML) | 正文 |
-| `yizhu_content` | string \| null | 译注正文（HTML） |
+| `supports.yin` | bool | 是否有拼音版（由 `yzsy` 字段含「音」决定）。`true` 时可调 `/api/poems/{poem_id}/yinyi` 取拼音 |
+| `supports.yizhu` | bool | 是否有译注（由 `yzsy` 字段含「注」决定）。`true` 时可调 `/api/poems/{poem_id}/yinyi` 取译注 |
+| `audio` | string \| null | 朗读音频签名 URL（30 分钟有效，Cloudflare Worker 校验 `ts`/`sign`）；无朗读资源时为 `null` |
 | `dynasty` | object \| null | 朝代 |
 | `author` | object \| null | 作者，缺失为 `null` |
+| `author.pic` | string \| null | 作者头像 URL |
 | `tags[]` | array | 关联合集 |
 | `fanyis[]` | array | 译文列表，按 `order ASC` |
 | `fanyis[].id` | int | 译文 ID（前端 list key 用，不作业务标识） |
@@ -204,6 +519,55 @@ curl 'http://localhost/api/poems?tag_id=10&dynasty_id=6'
 
 ```bash
 curl 'http://localhost/api/poems/0007dfjviw'
+```
+
+---
+
+### `GET /api/poems/{poem_id}/yinyi` — 拼音 + 译注
+
+按需取拼音版与译注内容；是否有数据由诗词详情的 `supports` 字段决定，避免前端徒劳调用。
+
+**Path 参数**
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `poem_id` | string | 是 | 诗词 slug |
+
+**响应**
+
+```json
+{
+  "yin": {
+    "name": "táo huā yuán jì",
+    "author": "táo yuān míng",
+    "dynasty": "wèi jìn",
+    "content": "jìn tài yuán zhōng……"
+  },
+  "yizhu": {
+    "content": "<p>译注内容……</p>"
+  }
+}
+```
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `yin` | object \| null | 拼音版；`yzsy` 不含「音」时为 `null` |
+| `yin.name` | string \| null | 标题拼音 |
+| `yin.author` | string \| null | 作者拼音 |
+| `yin.dynasty` | string \| null | 朝代拼音 |
+| `yin.content` | string \| null | 正文拼音（原文以空格分隔每个字的拼音） |
+| `yizhu` | object \| null | 译注；`yzsy` 不含「注」时为 `null`。预留 object 形式以便后续追加 `author`/`cankao` 字段 |
+| `yizhu.content` | string (HTML) | 译注正文 |
+
+**边界**
+
+- `poem_id` 未匹配 → `404` + `{"error": "poem_not_found"}`
+- 诗词存在但 `yzsy` 既不含「音」也不含「注」 → 返回 `{"yin": null, "yizhu": null}`，不报错
+
+**示例**
+
+```bash
+curl 'http://localhost/api/poems/0007dfjviw/yinyi'
 ```
 
 ---
@@ -338,6 +702,7 @@ curl 'http://localhost/api/books?class=史部&type=正史类'
 {
   "book_id": "hmwfcrllaq",
   "name": "论语",
+  "favorited": false,
   "content": "<p>……</p>",
   "class": "经部",
   "type": "四书类",
@@ -360,6 +725,7 @@ curl 'http://localhost/api/books?class=史部&type=正史类'
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
+| `favorited` | bool | 当前用户是否已收藏该古籍 |
 | `chapters[]` | array | 章节列表，按 `order ASC` |
 | `chapters[].id` | int | 章节内部 ID（前端 wx:key 用） |
 | `chapters[].articles[]` | array | 该章节文章列表，按 `order ASC` |
@@ -395,6 +761,7 @@ curl 'http://localhost/api/books/hmwfcrllaq'
 {
   "article_id": "lunyu-xueer-1",
   "name": "学而时习之",
+  "favorited": false,
   "content": "<p>……</p>",
   "chapter": { "id": 6001, "name": "学而第一" },
   "book": {
@@ -418,6 +785,7 @@ curl 'http://localhost/api/books/hmwfcrllaq'
 |---|---|---|
 | `article_id` | string | 文章 slug |
 | `name` | string | 文章标题 |
+| `favorited` | bool | 当前用户是否已收藏该文章 |
 | `content` | string (HTML) | 正文 |
 | `chapter` | object \| null | 所属章节 |
 | `chapter.id` | int | 章节内部 ID |
@@ -442,12 +810,413 @@ curl 'http://localhost/api/articles/lunyu-xueer-1'
 
 ---
 
+### `GET /api/mingjus` — 名句列表
+
+**Query 参数**
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `tag_id` | int | 否 | 合集 ID |
+| `dynasty_id` | int | 否 | 朝代 ID |
+| `author_id` | string | 否 | 作者 slug |
+| `page` | int | 否 | 页码，默认 1，上限 50 |
+| `limit` | int | 否 | 每页条数，1 ≤ limit ≤ 15（超出截断为 15） |
+
+**响应**
+
+```json
+{
+  "data": [
+    {
+      "mingju_id": "mj-huidang",
+      "name": "会当凌绝顶，一览众山小。",
+      "source": "望岳",
+      "guishu": 1,
+      "dynasty": { "id": 6, "name": "唐" },
+      "author": { "author_id": "dufu", "name": "杜甫" },
+      "sourceBookArticle": null
+    }
+  ],
+  "current_page": 1,
+  "per_page": 15,
+  "has_more": true
+}
+```
+
+**字段说明**
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `mingju_id` | string | 名句 slug |
+| `name` | string | 名句正文 |
+| `source` | string | 出处文字（如《望岳》、《论语·学而》） |
+| `guishu` | int | 归属类型（1=诗文 / 2=古籍 / 3=谚语 / 4=对联） |
+| `dynasty` | object \| null | 朝代 |
+| `author` | object \| null | 作者，可能为佚名 → `null` |
+| `sourceBookArticle` | object \| null | 当 `guishu=2` 时给出所属古籍/篇章 slug |
+| `sourceBookArticle.article_id` | string | 文章 slug |
+| `sourceBookArticle.book.book_id` | string | 古籍 slug |
+| `sourceBookArticle.book.name` | string | 古籍名 |
+
+**排序**：`mingjus.order ASC, mingjus.id ASC`。
+
+**示例**
+
+```bash
+curl 'http://localhost/api/mingjus'
+curl 'http://localhost/api/mingjus?author_id=dbzxvttxzu'
+curl 'http://localhost/api/mingjus?tag_id=10&dynasty_id=6'
+```
+
+---
+
+### `GET /api/mingjus/{mingju_id}` — 名句详情
+
+**Path 参数**
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `mingju_id` | string | 是 | 名句 slug |
+
+**响应**
+
+```json
+{
+  "mingju_id": "mj-huidang",
+  "name": "会当凌绝顶，一览众山小。",
+  "favorited": false,
+  "source": "望岳",
+  "guishu": 1,
+  "yiwen": "<p>……</p>",
+  "zhushi": "<p>……</p>",
+  "shangxi": "<p>……</p>",
+  "dynasty": { "id": 6, "name": "唐" },
+  "author": { "author_id": "dufu", "name": "杜甫" },
+  "tags": [ { "id": 10, "name": "唐诗三百首" } ],
+  "sourcePoem": {
+    "poem_id": "wangyue",
+    "name": "望岳",
+    "content": "<p>……</p>",
+    "author": { "author_id": "dufu", "name": "杜甫" },
+    "dynasty": { "id": 6, "name": "唐" }
+  },
+  "sourceBookArticle": null
+}
+```
+
+**字段说明**
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `favorited` | bool | 当前用户是否已收藏该名句 |
+| `yiwen` | string (HTML) \| null | 译文 |
+| `zhushi` | string (HTML) \| null | 注释 |
+| `shangxi` | string (HTML) \| null | 赏析 |
+| `tags[]` | array | 关联合集 |
+| `sourcePoem` | object \| null | 当 `guishu=1` 且能匹配到源诗时给出，结构与诗词简介一致 |
+| `sourceBookArticle` | object \| null | 当 `guishu=2` 时给出 |
+
+其他字段与列表接口一致。
+
+**边界**
+
+- `mingju_id` 未匹配 → `404` + `{"error": "mingju_not_found"}`
+
+**示例**
+
+```bash
+curl 'http://localhost/api/mingjus/mj-huidang'
+```
+
+---
+
+### `GET /api/authors` — 作者列表
+
+**Query 参数**
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `dynasty_id` | int | 否 | 朝代 ID |
+| `page` | int | 否 | 页码，默认 1，上限 50 |
+| `limit` | int | 否 | 每页条数，1 ≤ limit ≤ 15（超出截断为 15） |
+
+**响应**
+
+```json
+{
+  "data": [
+    {
+      "author_id": "dufu",
+      "name": "杜甫",
+      "content": "杜甫（712—770），字子美……",
+      "pic": "https://cdn.meirishici.com/author/dufu.jpg",
+      "shiwen_num": 1457,
+      "mingju_num": 35,
+      "dynasty": { "id": 6, "name": "唐代" }
+    }
+  ],
+  "current_page": 1,
+  "per_page": 15,
+  "has_more": true
+}
+```
+
+**字段说明**
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `author_id` | string | 作者 slug |
+| `name` | string | 姓名 |
+| `content` | string \| null | 简介（短文本） |
+| `pic` | string \| null | 头像 URL |
+| `shiwen_num` | int | 诗文数量 |
+| `mingju_num` | int | 名句数量 |
+| `dynasty` | object \| null | 朝代 |
+
+**排序**：`authors.order ASC, authors.id ASC`，只返回 `order < 999999` 的"主表"作者。
+
+**示例**
+
+```bash
+curl 'http://localhost/api/authors'
+curl 'http://localhost/api/authors?dynasty_id=6'
+curl 'http://localhost/api/authors?dynasty_id=6&limit=5'
+```
+
+---
+
+### `GET /api/authors/{author_id}` — 作者详情
+
+**Path 参数**
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `author_id` | string | 是 | 作者 slug |
+
+**响应**
+
+```json
+{
+  "author_id": "dufu",
+  "name": "杜甫",
+  "content": "杜甫（712—770），字子美……",
+  "shiwen_num": 1457,
+  "mingju_num": 35,
+  "pic": "https://cdn.meirishici.com/author/dufu.jpg",
+  "dynasty": { "id": 6, "name": "唐" },
+  "ziliaos": [
+    { "id": 1, "name": "生平", "content": "<p>……</p>", "order": 1 }
+  ]
+}
+```
+
+**字段说明**
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `author_id` | string | 作者 slug |
+| `name` | string | 姓名 |
+| `content` | string \| null | 简介（短文本，可能含若干句号） |
+| `shiwen_num` | int | 诗文数量 |
+| `mingju_num` | int | 名句数量 |
+| `pic` | string \| null | 头像 URL |
+| `dynasty` | object \| null | 朝代 |
+| `ziliaos[]` | array | 资料段（生平/成就等），按 `order ASC` |
+| `ziliaos[].id` | int | 内部 ID（前端 wx:key 用） |
+| `ziliaos[].name` | string | 段落标题 |
+| `ziliaos[].content` | string (HTML) | 段落内容 |
+| `ziliaos[].order` | int | 排序 |
+
+**关联数据**
+
+作者下的诗词列表 → 调 `GET /api/poems?author_id={author_id}`
+作者下的名句列表 → 调 `GET /api/mingjus?author_id={author_id}`
+
+**边界**
+
+- `author_id` 未匹配 → `404` + `{"error": "author_not_found"}`
+
+**示例**
+
+```bash
+curl 'http://localhost/api/authors/dbzxvttxzu'
+```
+
 ## 微信鉴权接口
 
 详见 `docs/wx-mp-auth.md`。
+
+### `POST /api/wx/login` — 小程序登录
+
+仅需 `X-APPKEY`，请求体传 `code`。
+
+**响应**
+
+```json
+{
+  "token": "64hex",
+  "session_key": "wx-session-key",
+  "expires_in": 7200,
+  "id": 1,
+  "name": "用户昵称",
+  "avatar": "https://cdn.example.com/avatar.jpg"
+}
+```
+
+### `PUT /api/wx/me` — 完善用户资料
+
+只接受 `name` 和 `avatar` 字段。两个字段都可选，只更新传入字段。
+
+**请求**
+
+```json
+{
+  "name": "用户昵称",
+  "avatar": "https://cdn.example.com/avatar.jpg"
+}
+```
+
+**响应**
+
+```json
+{
+  "id": 1,
+  "name": "用户昵称",
+  "avatar": "https://cdn.example.com/avatar.jpg"
+}
+```
+
+传入其他字段返回 `400`：
+
+```json
+{
+  "error": "invalid_fields"
+}
+```
 
 | 端点 | 方法 | 鉴权 |
 |---|---|---|
 | `/api/wx/login` | POST | 仅 `X-APPKEY` |
 | `/api/wx/me` | GET | `wx.sign` 全套 |
+| `/api/wx/me` | PUT | `wx.sign` 全套 |
 | 其他业务端点 | * | `wx.sign` 全套 |
+
+---
+
+## 搜索接口
+
+### `GET /api/search` — 跨类型搜索
+
+按 `type` 分流：诗词、古籍文章走 ES（`poems_index` / `articles_index`），名句、作者走数据库 LIKE。
+
+**Query 参数**
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `type` | string | 是 | `poem` / `article` / `mingju` / `author` |
+| `q` | string | 是 | 搜索关键词，最长 64 字符（超出截断）；空串返回空 `data` |
+| `page` | int | 否 | 页码，默认 1，上限 50 |
+
+**响应**
+
+每种 type 返回各自资源的列表项结构 + 统一分页字段：
+
+```json
+{
+  "type": "poem",
+  "data": [
+    {
+      "poem_id": "tb2yd7acup",
+      "name": "桃花源记",
+      "content": "<p>……</p>",
+      "dynasty": { "id": 3, "name": "魏晋" },
+      "author": { "author_id": "taoyuanming", "name": "陶渊明" }
+    }
+  ],
+  "current_page": 1,
+  "per_page": 15,
+  "has_more": true,
+  "total": 1234
+}
+```
+
+`type=article` 在 `page=1` 时额外返回 `books` 字段（按 `books.name LIKE %q%` 取最多 5 条，按 `order` 排序）：
+
+```json
+{
+  "type": "article",
+  "books": [
+    {
+      "book_id": "hlm",
+      "name": "红楼梦",
+      "class": "古籍",
+      "type": "小说",
+      "author": { "author_id": "caoxueqin", "name": "曹雪芹" },
+      "dynasty": { "id": 11, "name": "清代" }
+    }
+  ],
+  "data": [ /* 文章列表 */ ],
+  "current_page": 1,
+  "per_page": 15,
+  "has_more": true,
+  "total": 320
+}
+```
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `type` | string | 与请求 `type` 一致，前端用于路由匹配 |
+| `data[]` | array | 对应资源的列表项;具体字段见下方按 type 拆分说明 |
+| `books[]` | array | 仅 `type=article` + `page=1` 时返回:DB 搜书名直出整本书,放在文章列表上方 |
+| `total` | int \| 缺省 | ES 类型（poem/article）返回精确总数（上限 10000，超过截断）；DB 类型（mingju/author）不返回 |
+
+**各 type 的 `data[]` 结构**
+
+- `type=poem` → 同 `/api/poems` 列表项（不含 `tags`）
+- `type=article` → `{article_id, name, book: {book_id, name, author: {author_id, name} | null} | null}`
+- `type=mingju` → `{mingju_id, name, source, author: {author_id, name} | null}`
+- `type=author` → 同 `/api/authors` 列表项（含 `content`/`pic`/`shiwen_num`/`mingju_num`/`dynasty`）
+
+**评分策略（ES 类型）**
+
+统一由 `App\Services\Search\EsQueryBuilder::build()` 生成。Web 端 `Web/PoemController::search` 与 API 端 `Api/SearchController` 共用同一套公式：
+
+- `match_phrase`（整句命中）走 `constant_score`，权重远高于 `match`（分词命中）
+- `match` 加 `minimum_should_match=75%` + `operator=and`，降低噪声
+- 指定 `orderField` 时叠加高斯衰减（`origin=0, scale=5000, decay=0.5, weight=200`），将 `order` 越小的越靠前作为 popularity 信号
+- 指定 `authorBoost` 时追加 `term: { author.keyword: q }` 子句，搜作者名时同名作品集中靠前
+
+具体字段权重：
+
+| type | 字段 | phrase boost | match boost |
+|---|---|---|---|
+| poem | name | 200 | 2 |
+| poem | content | 90 | 5 |
+| article | book_name | 100 | 8 |
+| article | article_name | 60 | 4 |
+| article | content | 90 | 5 |
+
+附加项：
+- poem 启用 `authorBoost=150`（搜"李白"时李白作品先出）+ `orderField=order`
+- article 启用 `orderField=book_order`（《史记》《论语》等高优先级古籍的文章先出）
+
+article 中 `book_name` 权重最高,加上 `books` 字段前置,搜"红楼"会先出红楼梦这本书,再出红楼梦的篇章。
+
+**边界**
+
+- `type` 不在白名单 → `400` + `{"error": "invalid_type"}`
+- `q` 空 / `page > 50` → 空 `data` + `has_more=false`
+- DB 类型 LIKE 使用 `%q%` 子串匹配，特殊字符 `\` / `%` / `_` 自动转义
+- `books` 仅在 `type=article` + `page=1` 时存在;翻页后省略
+
+**示例**
+
+```bash
+curl 'http://localhost/api/search?type=poem&q=明月'
+curl 'http://localhost/api/search?type=poem&q=李白'      # author boost 生效
+curl 'http://localhost/api/search?type=article&q=红楼'   # 顶部返回红楼梦
+curl 'http://localhost/api/search?type=mingju&q=举头'
+curl 'http://localhost/api/search?type=author&q=杜甫'
+```
+
+---

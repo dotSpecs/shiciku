@@ -44,4 +44,15 @@ class Book extends Model
     {
         return $this->belongsToMany(Tag::class, 'book_tag', 'book_id', 'tag_id');
     }
+
+    protected static function booted(): void
+    {
+        static::updated(function (Book $book) {
+            $fields = ['name', 'class', 'type', 'author_id', 'order'];
+            if (!array_intersect($fields, array_keys($book->getChanges()))) {
+                return;
+            }
+            $book->articles()->searchable();
+        });
+    }
 }

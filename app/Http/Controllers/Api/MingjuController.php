@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Api\Concerns\ResolvesFavoriteStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Author;
 use App\Models\Mingju;
@@ -10,6 +11,8 @@ use Illuminate\Http\Request;
 
 class MingjuController extends Controller
 {
+    use ResolvesFavoriteStatus;
+
     private const PER_PAGE = 15;
     private const MAX_PAGE = 50;
 
@@ -19,9 +22,10 @@ class MingjuController extends Controller
         $tagId = $request->get('tag_id');
         $dynastyId = $request->get('dynasty_id');
         $authorSlug = $request->get('author_id');
+        $perPage = $this->resolvePerPage($request->get('limit'));
 
         if ($page > self::MAX_PAGE) {
-            return $this->emptyPage($page);
+            return $this->emptyPage($page, $perPage);
         }
 
         $query = Mingju::query()
@@ -38,7 +42,7 @@ class MingjuController extends Controller
         if ($authorSlug) {
             $author = Author::select('id')->where('author_id', $authorSlug)->first();
             if (!$author) {
-                return $this->emptyPage($page);
+                return $this->emptyPage($page, $perPage);
             }
             $query->where('author_id', $author->id);
         }
@@ -51,7 +55,7 @@ class MingjuController extends Controller
             $query->whereHas('tags', fn ($q) => $q->where('tag_id', (int) $tagId));
         }
 
-        $paginator = $query->simplePaginate(self::PER_PAGE, ['*'], 'page', $page);
+        $paginator = $query->simplePaginate($perPage, ['*'], 'page', $page);
 
         return response()->json([
             'data' => $paginator->getCollection()->map(fn (Mingju $m) => $this->transformBrief($m))->all(),
@@ -61,7 +65,7 @@ class MingjuController extends Controller
         ]);
     }
 
-    public function show(string $mingju_id): JsonResponse
+    public function show(Request $request, string $mingju_id): JsonResponse
     {
         $mingju = Mingju::query()
             ->select('id', 'mingju_id', 'name', 'source', 'guishu', 'yiwen', 'zhushi', 'shangxi', 'author_id', 'dynasty_id', 'source_poem_id', 'source_book_article_id')
@@ -82,7 +86,7 @@ class MingjuController extends Controller
             return response()->json(['error' => 'mingju_not_found'], 404);
         }
 
-        return response()->json($this->transformDetail($mingju));
+        return response()->json($this->transformDetail($mingju, $this->isFavorited($request, $mingju)));
     }
 
     private function transformBrief(Mingju $m): array
@@ -98,11 +102,12 @@ class MingjuController extends Controller
         ];
     }
 
-    private function transformDetail(Mingju $m): array
+    private function transformDetail(Mingju $m, bool $favorited): array
     {
         return [
             'mingju_id' => $m->mingju_id,
             'name' => $m->name,
+            'favorited' => $favorited,
             'source' => $m->source,
             'guishu' => (int) $m->guishu,
             'yiwen' => $m->yiwen,
@@ -143,12 +148,24 @@ class MingjuController extends Controller
         ];
     }
 
-    private function emptyPage(int $page): JsonResponse
+    private function resolvePerPage(mixed $limit): int
+    {
+        if ($limit === null || $limit === '') {
+            return self::PER_PAGE;
+        }
+        $n = (int) $limit;
+        if ($n < 1) {
+            return self::PER_PAGE;
+        }
+        return min($n, self::PER_PAGE);
+    }
+
+    private function emptyPage(int $page, int $perPage = self::PER_PAGE): JsonResponse
     {
         return response()->json([
             'data' => [],
             'current_page' => $page,
-            'per_page' => self::PER_PAGE,
+            'per_page' => $perPage,
             'has_more' => false,
         ]);
     }

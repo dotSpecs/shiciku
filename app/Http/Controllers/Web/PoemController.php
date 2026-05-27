@@ -8,6 +8,7 @@ use App\Models\Dynasty;
 use App\Models\Poem;
 use App\Models\Tag;
 use App\Models\Zhuanti;
+use App\Services\Search\EsQueryBuilder;
 use App\Services\Utils\AudioService;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
@@ -185,72 +186,11 @@ class PoemController extends Controller
             ->simplePaginate()
             ->withQueryString() : null;
 
-        $searchQuery = [
-            'function_score' => [
-                'query' => [
-                    'bool' => [
-                        'should' => [
-                            [
-                                'constant_score' => [
-                                    'filter' => [
-                                        'match_phrase' => [
-                                            'content' => [
-                                                'query' => $query
-                                            ]
-                                        ]
-                                    ],
-                                    'boost' => 90  // 大幅提高完整短语匹配的权重
-                                ]
-                            ],
-                            [
-                                'constant_score' => [
-                                    'filter' => [
-                                        'match_phrase' => [
-                                            'name' => [
-                                                'query' => $query
-                                            ]
-                                        ]
-                                    ],
-                                    'boost' => 50
-                                ]
-                            ],
-                            [
-                                'match' => [
-                                    'content' => [
-                                        'query' => $query,
-                                        'boost' => 5,
-                                        'minimum_should_match' => '75%',  // 提高最小匹配度要求
-                                        'operator' => 'and'  // 要求所有词都匹配
-                                    ]
-                                ]
-                            ],
-                            [
-                                'match' => [
-                                    'name' => [
-                                        'query' => $query,
-                                        'boost' => 2
-                                    ]
-                                ]
-                            ]
-                        ]
-                    ]
-                ],
-                'score_mode' => 'sum',
-                'boost_mode' => 'sum',
-                'functions' => [
-                    [
-                        'gauss' => [
-                            'id' => [
-                                'origin' => '1',
-                                'scale' => '1000',
-                                'decay' => 0.9
-                            ]
-                        ],
-                        'weight' => 0.0001
-                    ]
-                ]
-            ]
-        ];
+        $searchQuery = EsQueryBuilder::build($query, [
+            'content' => ['phrase' => 90, 'match' => 5],
+            'name' => ['phrase' => 200, 'match' => 2],
+        ], orderField: 'order', authorBoost: 150);
+
         $poems = $type === 'poem' ? Poem::searchQuery($searchQuery)
             // ->select(['id', 'poem_id', 'name', 'content', 'dynasty_id', 'author_id'])
             ->paginate(15)
@@ -309,7 +249,7 @@ class PoemController extends Controller
         $content = preg_replace('/\(.*?\)|（.*?）/u', '', $content);
 
         // 拼接标题、朝代、作者和内容，中间加入 1秒 停顿
-        $text = $poem->name . '<break time="1s"/>' . "\n\n" . ($poem->dynasty ? $poem->dynasty->name : '') . ' · ' . ($poem->author ? $poem->author->name : '佚名') . '<break time="1s"/>' . "\n\n" . $content;
+        $text = $poem->name . '<break time="1s"/>' . "\n\n" . ($poem->dynasty ? $poem->dynasty->name : '') . ' · ' . ($poem->author ? $poem->author->name : '') . '<break time="1s"/>' . "\n\n" . $content;
 
         // dd($poem->content,$content,$text);
         // 调用AudioService生成音频

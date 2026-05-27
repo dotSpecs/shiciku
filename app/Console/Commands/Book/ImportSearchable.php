@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Console\Commands\Poem;
+namespace App\Console\Commands\Book;
 
-use App\Models\Poem;
+use App\Models\BookArticle;
 use Elastic\Adapter\Documents\Document;
 use Elastic\Adapter\Documents\DocumentManager;
 use Elastic\Adapter\Indices\IndexManager;
@@ -12,23 +12,28 @@ use Illuminate\Console\Command;
 
 class ImportSearchable extends Command
 {
-    protected $signature = 'poem:import-searchable
+    protected $signature = 'book:import-searchable
         {--start=0 : 从该 id 起开始导入}
         {--chunk=500 : 每批条数}
         {--resume : 复用已存在的最新未切换索引继续灌数据（用于失败后续传）}
         {--drop-old : 切换 alias 后删掉旧版本（默认保留以便回滚）}';
 
-    protected $description = '蓝绿模式：建新版索引 → 灌数据 → 原子切换 poems_index alias';
+    protected $description = '蓝绿模式：建新版索引 → 灌古籍文章数据 → 原子切换 articles_index alias';
 
-    private const ALIAS = 'poems_index';
+    private const ALIAS = 'articles_index';
 
     private const MAPPING = [
         'properties' => [
             'id' => ['type' => 'long'],
-            'name' => ['type' => 'text', 'analyzer' => 'ik_max_word', 'search_analyzer' => 'ik_smart'],
+            'article_id' => ['type' => 'keyword'],
+            'article_name' => ['type' => 'text', 'analyzer' => 'ik_max_word', 'search_analyzer' => 'ik_smart'],
             'content' => ['type' => 'text', 'analyzer' => 'ik_max_word', 'search_analyzer' => 'ik_smart'],
+            'book_id' => ['type' => 'keyword'],
+            'book_name' => ['type' => 'text', 'analyzer' => 'ik_max_word', 'search_analyzer' => 'ik_smart'],
+            'book_order' => ['type' => 'integer'],
+            'class' => ['type' => 'keyword'],
+            'type' => ['type' => 'keyword'],
             'author' => ['type' => 'keyword'],
-            'order' => ['type' => 'integer'],
         ],
     ];
 
@@ -47,9 +52,9 @@ class ImportSearchable extends Command
         if ($indices->exists(self::ALIAS) && !$this->isAlias($client, self::ALIAS)) {
             $this->error(self::ALIAS.' 当前是真实索引而非 alias。');
             $this->line('请先备份并删除，再重跑本命令：');
-            $this->line('  curl -X PUT  \'localhost:9200/'.self::ALIAS.'/_settings\' -H \'Content-Type: application/json\' -d \'{"index.blocks.write":true}\'');
-            $this->line('  curl -X POST \'localhost:9200/'.self::ALIAS.'/_clone/poems_index_legacy_backup\'');
-            $this->line('  curl -X DELETE \'localhost:9200/'.self::ALIAS.'\'');
+            $this->line('  curl -u user:pass -X PUT  \'localhost:9200/'.self::ALIAS.'/_settings\' -H \'Content-Type: application/json\' -d \'{"index.blocks.write":true}\'');
+            $this->line('  curl -u user:pass -X POST \'localhost:9200/'.self::ALIAS.'/_clone/articles_index_legacy_backup\'');
+            $this->line('  curl -u user:pass -X DELETE \'localhost:9200/'.self::ALIAS.'\'');
             return self::FAILURE;
         }
 
@@ -70,7 +75,7 @@ class ImportSearchable extends Command
 
             if ($indices->exists($newIndex)) {
                 $this->error("索引 {$newIndex} 已存在。可加 --resume 续传，或手工删除后重试：");
-                $this->line("  curl -X DELETE 'localhost:9200/{$newIndex}'");
+                $this->line("  curl -u user:pass -X DELETE 'localhost:9200/{$newIndex}'");
                 return self::FAILURE;
             }
 
@@ -82,20 +87,20 @@ class ImportSearchable extends Command
         $chunk = max(1, (int) $this->option('chunk'));
         $count = 0;
 
-        Poem::query()
+        BookArticle::query()
             ->where('id', '>=', $start)
-            ->with('author:id,name')
-            ->chunkById($chunk, function ($poems) use (&$count, $newIndex, $documents) {
-                $docs = $poems->map(fn (Poem $p) => new Document(
-                    (string) $p->id,
-                    $p->toSearchableArray()
+            ->with('book.author')
+            ->chunkById($chunk, function ($articles) use (&$count, $newIndex, $documents) {
+                $docs = $articles->map(fn (BookArticle $a) => new Document(
+                    (string) $a->id,
+                    $a->toSearchableArray()
                 ));
                 $documents->index($newIndex, $docs);
-                $count += $poems->count();
-                $first = $poems->first();
-                $last = $poems->last();
-                $this->info("id {$first->id} ~ {$last->id} 导入 {$poems->count()} 条 (累计 {$count})");
-                unset($docs, $poems);
+                $count += $articles->count();
+                $first = $articles->first();
+                $last = $articles->last();
+                $this->info("id {$first->id} ~ {$last->id} 导入 {$articles->count()} 条 (累计 {$count})");
+                unset($docs, $articles);
                 gc_collect_cycles();
             });
 
@@ -118,7 +123,7 @@ class ImportSearchable extends Command
             $indices->drop($oldIndex);
         } elseif ($oldIndex) {
             $this->info("旧版本 {$oldIndex} 已保留。确认稳定后删除：");
-            $this->line("  curl -X DELETE 'localhost:9200/{$oldIndex}'");
+            $this->line("  curl -u user:pass -X DELETE 'localhost:9200/{$oldIndex}'");
         }
 
         $this->info("完成 ✓ 共导入 {$count} 条");

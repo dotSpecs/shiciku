@@ -38,4 +38,17 @@ return [
     'edgetts' => [
         'token' => env('EDGE_TTS_TOKEN'),
     ],
+
+    'cf_worker' => [
+        'audio_domain' => 'https://audio.070022.xyz',
+        'audio_key' => env('CF_WORKER_AUDIO_KEY'),
+        'audio_ttl' => 1800,
+    ],
+
+    'qiniu' => [
+        'ak' => env('QINIU_AK'),
+        'sk' => env('QINIU_SK'),
+        'bucket' => env('QINIU_BUCKET'),
+        'host' => env('QINIU_HOST'),
+    ],
 ];

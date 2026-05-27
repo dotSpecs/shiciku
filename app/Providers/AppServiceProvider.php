@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Book;
+use App\Models\BookArticle;
 use App\Models\Mingju;
 use App\Models\Poem;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -27,6 +28,7 @@ class AppServiceProvider extends ServiceProvider
             'poem' => Poem::class,
             'mingju' => Mingju::class,
             'book' => Book::class,
+            'book_article' => BookArticle::class,
         ]);
     }
 }
