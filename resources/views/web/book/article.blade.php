@@ -1,21 +1,39 @@
 @extends('web.layout')
 
+@php
+    $displayDynasty = $article->book->dynasty?->name ?: $article->book->chaodai;
+    $displayAuthor = $article->book->author?->name ?: $article->book->author_name;
+@endphp
+
 @section('title', $article->book->name . '·' . ($article->chapter && $article->chapter->name ? $article->chapter->name. '·' : '') . $article->name . '的原文、注释、翻译、赏析')
 
-@section('keywords', $article->book->name . ',' . ($article->chapter && $article->chapter->name ? $article->chapter->name. ',' : '') . $article->name . ',')
-@section('description', $article->book->name . '·' . ($article->chapter && $article->chapter->name ? $article->chapter->name. '·' : '') . $article->name . '的原文、注释、翻译、赏析,')
+@section('keywords', $article->book->name . ',' . ($displayAuthor ? $displayAuthor . ',' : '') . ($article->chapter && $article->chapter->name ? $article->chapter->name. ',' : '') . $article->name . ',')
+@section('description', $article->book->name . '·' . ($article->chapter && $article->chapter->name ? $article->chapter->name. '·' : '') . $article->name . '的原文、注释、翻译、赏析,' . ($displayAuthor ? $displayAuthor . ',' : ''))
 
 @section('content')
 <div class="card mb-8">
-    <div class="card-title flex items-center justify-between @if(empty($article->book->author)) !mb-0 @endif">
+    <div class="card-title flex items-center justify-between @if(!$displayDynasty && !$displayAuthor) !mb-0 @endif">
         <h1 class="text-xl">{{ $article->book->name }}</h1>
         <a href="{{ route('book.show', $article->book->book_id) }}" class="link text-sm primary">返回目录</a>
     </div>
 
     <div class="card-content">
-        @if($article->book->author)
+        @if($displayDynasty || $displayAuthor)
         <p class="secondary">
-            作者：<a class="link secondary" href="{{ route('author.show', $article->book->author->author_id) }}" id="poem-author">{{ $article->book->author->name }}</a>
+            作者：
+            @if($article->book->dynasty)
+            {{ $article->book->dynasty->name }}
+            @elseif($article->book->chaodai)
+            {{ $article->book->chaodai }}
+            @endif
+            @if($displayDynasty && $displayAuthor)
+            ·
+            @endif
+            @if($article->book->author)
+            <a class="link secondary" href="{{ route('author.show', $article->book->author->author_id) }}" id="poem-author">{{ $article->book->author->name }}</a>
+            @elseif($displayAuthor)
+            <span id="poem-author">{{ $displayAuthor }}</span>
+            @endif
         </p>
         @endif
     </div>
@@ -55,8 +73,8 @@
     <script>
         window.poemData = {
             title: @json($article->name),
-            dynasty: '',
-            author: @json($article->book->author ? $article->book->author->name : ''),
+            dynasty: @json($displayDynasty ?: ''),
+            author: @json($displayAuthor ?: ''),
             content: @json($article->content)
         };
     </script>

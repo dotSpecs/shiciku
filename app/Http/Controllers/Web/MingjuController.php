@@ -25,9 +25,10 @@ class MingjuController extends Controller
         });
 
         $query = Mingju::query()
-            ->select(['id', 'mingju_id', 'name', 'source', 'author_id', 'source_poem_id', 'source_book_article_id', 'guishu'])
+            ->select(['id', 'mingju_id', 'name', 'source', 'author_id', 'author_name', 'dynasty_id', 'chaodai', 'source_poem_id', 'source_book_article_id', 'guishu'])
             ->with([
                 'author:id,author_id,name',
+                'dynasty:id,name',
                 'sourcePoem:id,poem_id',
                 'sourceBookArticle:id,article_id,book_id',
                 'sourceBookArticle.book:id,book_id',
@@ -71,7 +72,7 @@ class MingjuController extends Controller
             return Mingju::query()
                 ->select([
                     'id', 'mingju_id', 'name', 'source',
-                    'author_id', 'dynasty_id',
+                    'author_id', 'author_name', 'dynasty_id', 'chaodai',
                     'source_poem_id', 'source_book_article_id',
                     'guishu', 'yiwen', 'shangxi', 'zhushi',
                     'pic_url', 'pic_name', 'pic_author', 'pic_cangguan', 'pic_chaodai',
@@ -84,7 +85,7 @@ class MingjuController extends Controller
                     'sourceBookArticle:id,article_id,book_id,name',
                     'sourceBookArticle.book:id,book_id,name',
                     'sourcePoem' => function ($q) {
-                        $q->select(['id', 'poem_id', 'name', 'content', 'yizhu_content', 'dynasty_id', 'author_id'])
+                        $q->select(['id', 'poem_id', 'name', 'content', 'yizhu_content', 'author_id', 'author_name', 'dynasty_id', 'chaodai'])
                             ->with([
                                 'author:id,author_id,name,content,pic,pic_small',
                                 'dynasty:id,name',

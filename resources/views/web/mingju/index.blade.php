@@ -27,6 +27,9 @@
 
 <div class="mx-auto">
     @foreach ($mingjus as $mingju)
+    @php
+        $displayAuthor = $mingju->author?->name ?: $mingju->author_name;
+    @endphp
     <div class="mingju card mb-8">
         <h2 class="card-title">
             <a href="{{ route('mingju.show', $mingju->mingju_id) }}" class="link">{{ $mingju->name }}</a>
@@ -34,8 +37,8 @@
         <div class="card-content secondary text-sm">
             @if ($mingju->author)
                 <a href="{{ route('author.show', $mingju->author->author_id) }}" class="link secondary">{{ $mingju->author->name }}</a>
-            @else
-                佚名
+            @elseif ($displayAuthor)
+                {{ $displayAuthor }}
             @endif
             @if ($mingju->source)
                 @php

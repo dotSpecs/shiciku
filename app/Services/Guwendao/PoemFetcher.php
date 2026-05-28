@@ -35,6 +35,11 @@ class PoemFetcher
         return $this->fetch($idStr, $order);
     }
 
+    public function refetchByIdStr(string $idStr, ?int $order = null): ?Poem
+    {
+        return $this->fetch($idStr, $order);
+    }
+
     private function maybeBumpOrder(Poem $poem, ?int $order): void
     {
         if ($order !== null && $order < $poem->order) {
@@ -90,6 +95,8 @@ class PoemFetcher
             $poem->dynasty_id = $dynasty?->id;
             $poem->content = ContentNormalizer::html($shiwen['contentTxt'] ?? null);
             $poem->content_py = $yzShiwen['contentTxtPy'] ?? null;
+            $poem->author_name = $author?->name ?: ($shiwen['author'] ?? ($authorRaw['nameStr'] ?? null));
+            $poem->chaodai = $dynasty?->name ?: ($shiwen['chaodai'] ?? null);
             $poem->author_py = $yzShiwen['authorPy'] ?? null;
             $poem->chaodai_py = $yzShiwen['chaodaiPy'] ?? null;
             $poem->type = $shiwen['type'] ?? null;

@@ -16,7 +16,9 @@ return new class extends Migration
             $table->string('name', 512);
             $table->string('name_py', 1024)->nullable();
             $table->unsignedBigInteger('author_id')->nullable()->index();
+            $table->string('author_name', 128)->nullable();
             $table->unsignedBigInteger('dynasty_id')->nullable()->index();
+            $table->string('chaodai', 32)->nullable();
             $table->longText('content')->nullable();
             $table->longText('content_py')->nullable();
             $table->string('author_py', 255)->nullable();

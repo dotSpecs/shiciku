@@ -15,7 +15,9 @@ return new class extends Migration
             $table->string('mingju_id', 16)->nullable()->unique();
             $table->text('name');
             $table->unsignedBigInteger('author_id')->nullable()->index();
+            $table->string('author_name', 128)->nullable();
             $table->unsignedBigInteger('dynasty_id')->nullable()->index();
+            $table->string('chaodai', 32)->nullable();
             $table->string('source', 512)->nullable();
             $table->string('source_id_str', 32)->nullable();
             $table->unsignedBigInteger('source_poem_id')->nullable()->index();

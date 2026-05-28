@@ -29,7 +29,7 @@ class MingjuController extends Controller
         }
 
         $query = Mingju::query()
-            ->select('id', 'mingju_id', 'name', 'source', 'guishu', 'author_id', 'dynasty_id', 'source_book_article_id')
+            ->select('id', 'mingju_id', 'name', 'source', 'guishu', 'author_id', 'author_name', 'dynasty_id', 'chaodai', 'source_book_article_id')
             ->with([
                 'author:id,author_id,name',
                 'dynasty:id,name',
@@ -68,13 +68,13 @@ class MingjuController extends Controller
     public function show(Request $request, string $mingju_id): JsonResponse
     {
         $mingju = Mingju::query()
-            ->select('id', 'mingju_id', 'name', 'source', 'guishu', 'yiwen', 'zhushi', 'shangxi', 'author_id', 'dynasty_id', 'source_poem_id', 'source_book_article_id')
+            ->select('id', 'mingju_id', 'name', 'source', 'guishu', 'yiwen', 'zhushi', 'shangxi', 'author_id', 'author_name', 'dynasty_id', 'chaodai', 'source_poem_id', 'source_book_article_id')
             ->where('mingju_id', $mingju_id)
             ->with([
                 'author:id,author_id,name',
                 'dynasty:id,name',
                 'tags:id,name',
-                'sourcePoem:id,poem_id,name,content,author_id,dynasty_id',
+                'sourcePoem:id,poem_id,name,content,author_id,author_name,dynasty_id,chaodai',
                 'sourcePoem.author:id,author_id,name',
                 'sourcePoem.dynasty:id,name',
                 'sourceBookArticle:id,article_id,book_id,name',
@@ -96,6 +96,8 @@ class MingjuController extends Controller
             'name' => $m->name,
             'source' => $m->source,
             'guishu' => (int) $m->guishu,
+            'author_name' => $m->author_name,
+            'chaodai' => $m->chaodai,
             'dynasty' => $m->dynasty ? ['id' => $m->dynasty->id, 'name' => $m->dynasty->name] : null,
             'author' => $m->author ? ['author_id' => $m->author->author_id, 'name' => $m->author->name] : null,
             'sourceBookArticle' => $this->sourceBookArticlePayload($m),
@@ -113,6 +115,8 @@ class MingjuController extends Controller
             'yiwen' => $m->yiwen,
             'zhushi' => $m->zhushi,
             'shangxi' => $m->shangxi,
+            'author_name' => $m->author_name,
+            'chaodai' => $m->chaodai,
             'dynasty' => $m->dynasty ? ['id' => $m->dynasty->id, 'name' => $m->dynasty->name] : null,
             'author' => $m->author ? ['author_id' => $m->author->author_id, 'name' => $m->author->name] : null,
             'tags' => $m->tags->map(fn ($t) => ['id' => $t->id, 'name' => $t->name])->values()->all(),
@@ -120,6 +124,8 @@ class MingjuController extends Controller
                 'poem_id' => $m->sourcePoem->poem_id,
                 'name' => $m->sourcePoem->name,
                 'content' => $m->sourcePoem->content,
+                'author_name' => $m->sourcePoem->author_name,
+                'chaodai' => $m->sourcePoem->chaodai,
                 'author' => $m->sourcePoem->author ? [
                     'author_id' => $m->sourcePoem->author->author_id,
                     'name' => $m->sourcePoem->author->name,

@@ -12,13 +12,15 @@
                 <a href="{{ route('poem.index', ['dynasty_id' => $poem->dynasty->id]) }}" class="link secondary">
                     {{ $poem->dynasty->name }}
                 </a> ·
+                @elseif($poem->chaodai)
+                {{ $poem->chaodai }} ·
                 @endif
                 @if($poem->author)
                 <a href="{{ route('author.show', $poem->author->author_id) }}" class="link secondary">
                     {{ $poem->author->name }}
                 </a>
-                @else
-                佚名
+                @elseif($poem->author_name)
+                {{ $poem->author_name }}
                 @endif
             </div>
             <div class="poem-content escape-html line-clamp-3">

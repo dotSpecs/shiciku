@@ -50,6 +50,8 @@ class HomeController extends Controller
             'favorited' => $this->isFavorited($request, $p),
             'content' => $p->content,
             'audio' => SignedAudioUrl::generate($p->langsong_url),
+            'author_name' => $p->author_name,
+            'chaodai' => $p->chaodai,
             'author' => $p->author ? ['author_id' => $p->author->author_id, 'name' => $p->author->name] : null,
             'dynasty' => $p->dynasty ? ['id' => $p->dynasty->id, 'name' => $p->dynasty->name] : null,
         ];
@@ -106,8 +108,8 @@ class HomeController extends Controller
     private function randomBooks(): array
     {
         return Book::query()
-            ->select('id', 'book_id', 'name', 'author_id', 'order')
-            ->with('author:id,author_id,name')
+            ->select('id', 'book_id', 'name', 'author_id', 'author_name', 'dynasty_id', 'chaodai', 'order')
+            ->with(['author:id,author_id,name', 'dynasty:id,name'])
             ->where('order', '<=', 50)
             ->inRandomOrder()
             ->limit(10)
@@ -116,6 +118,9 @@ class HomeController extends Controller
             ->map(fn (Book $b) => [
                 'book_id' => $b->book_id,
                 'name' => $b->name,
+                'author_name' => $b->author_name,
+                'chaodai' => $b->chaodai,
+                'dynasty' => $b->dynasty?->name,
                 'author' => $b->author ? ['author_id' => $b->author->author_id, 'name' => $b->author->name] : null,
             ])
             ->values()
@@ -125,7 +130,7 @@ class HomeController extends Controller
     private function randomQuotes(): array
     {
         return Mingju::query()
-            ->select('id', 'mingju_id', 'name', 'source', 'guishu', 'author_id', 'order')
+            ->select('id', 'mingju_id', 'name', 'source', 'guishu', 'author_id', 'author_name', 'chaodai', 'order')
             ->where('guishu', Mingju::GUISHU_SHIWEN)
             ->whereNotNull('source_poem_id')
             ->with('author:id,author_id,name')
@@ -138,6 +143,8 @@ class HomeController extends Controller
                 'mingju_id' => $m->mingju_id,
                 'name' => $m->name,
                 'source' => $m->source,
+                'author_name' => $m->author_name,
+                'chaodai' => $m->chaodai,
                 'author' => $m->author ? ['author_id' => $m->author->author_id, 'name' => $m->author->name] : null,
             ])
             ->values()

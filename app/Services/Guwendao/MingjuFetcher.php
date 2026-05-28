@@ -88,7 +88,9 @@ class MingjuFetcher
             $mingju->id_check = $mj['idCheck'] ?? null;
             $mingju->name = (string) ($mj['nameStr'] ?? '');
             $mingju->author_id = $author?->id;
+            $mingju->author_name = $author?->name ?: ($mj['author'] ?? ($authorRaw['nameStr'] ?? null));
             $mingju->dynasty_id = $dynasty?->id;
+            $mingju->chaodai = $dynasty?->name ?: ($mj['chaodai'] ?? null);
             $mingju->source = $mj['source'] ?? null;
             $mingju->source_id_str = $sourceIdStr;
             $mingju->source_poem_id = $sourcePoemId;

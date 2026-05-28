@@ -26,8 +26,8 @@
                 <span class="secondary text-xs shrink-0">
                     @if ($poem->author)
                         {{ $poem->author->name }}
-                    @else
-                        佚名
+                    @elseif ($poem->author_name)
+                        {{ $poem->author_name }}
                     @endif
                 </span>
             </li>

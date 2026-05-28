@@ -24,7 +24,7 @@ class DailyPoemService
 
         $existing = DailyPoem::query()
             ->where('date', $dateStr)
-            ->with(['poem:id,poem_id,name,content,langsong_url,dynasty_id,author_id', 'poem.author:id,author_id,name', 'poem.dynasty:id,name'])
+            ->with(['poem:id,poem_id,name,content,langsong_url,author_id,author_name,dynasty_id,chaodai', 'poem.author:id,author_id,name', 'poem.dynasty:id,name'])
             ->first();
         if ($existing) {
             return $existing;
@@ -43,7 +43,7 @@ class DailyPoemService
 
         return DailyPoem::query()
             ->where('date', $dateStr)
-            ->with(['poem:id,poem_id,name,content,langsong_url,dynasty_id,author_id', 'poem.author:id,author_id,name', 'poem.dynasty:id,name'])
+            ->with(['poem:id,poem_id,name,content,langsong_url,author_id,author_name,dynasty_id,chaodai', 'poem.author:id,author_id,name', 'poem.dynasty:id,name'])
             ->first();
     }
 

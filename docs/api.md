@@ -141,8 +141,23 @@
       "item": {
         "poem_id": "tb2yd7acup",
         "name": "桃花源记",
+        "author_name": "陶渊明",
+        "chaodai": "魏晋",
         "dynasty": { "id": 3, "name": "魏晋" },
         "author": { "author_id": "taoyuanming", "name": "陶渊明" }
+      }
+    },
+    {
+      "type": "mingju",
+      "favorited_at": "2026-05-27 12:00:30",
+      "item": {
+        "mingju_id": "mj-huidang",
+        "name": "会当凌绝顶，一览众山小。",
+        "source": "望岳",
+        "guishu": 1,
+        "author_name": "杜甫",
+        "chaodai": "唐代",
+        "author": { "author_id": "dufu", "name": "杜甫" }
       }
     },
     {
@@ -153,10 +168,14 @@
         "name": "学而",
         "chapter": { "id": 1, "name": "卷一" },
         "book": {
-          "book_id": "lunyu",
-          "name": "论语"
-        }
+        "book_id": "lunyu",
+        "name": "论语",
+        "author_name": "孔子",
+        "chaodai": "春秋",
+        "dynasty": null,
+        "author": { "author_id": "kongzi", "name": "孔子" }
       }
+    }
     }
   ],
   "current_page": 1,
@@ -169,10 +188,10 @@
 
 | type | item 主要字段 |
 |---|---|
-| `poem` | `poem_id`, `name`, `dynasty`, `author` |
-| `mingju` | `mingju_id`, `name`, `source`, `guishu`, `author` |
-| `book` | `book_id`, `name`, `class`, `type`, `dynasty`, `author` |
-| `book_article` | `article_id`, `name`, `chapter`, `book` |
+| `poem` | `poem_id`, `name`, `author_name`, `chaodai`, `dynasty`, `author` |
+| `mingju` | `mingju_id`, `name`, `source`, `guishu`, `author_name`, `chaodai`, `author` |
+| `book` | `book_id`, `name`, `class`, `type`, `author_name`, `chaodai`, `dynasty`, `author` |
+| `book_article` | `article_id`, `name`, `chapter`, `book`（含古籍的 `author_name`, `chaodai`, `dynasty`, `author`） |
 
 `type` 非法返回 `400`：
 
@@ -292,6 +311,8 @@
     "favorited": false,
     "content": "<p>……</p>",
     "audio": "https://audio.070022.xyz/poem/tb2yd7acup.mp3?ts=1748160000&sign=8e1c…",
+    "author_name": "陶渊明",
+    "chaodai": "魏晋",
     "author": { "author_id": "taoyuanming", "name": "陶渊明" },
     "dynasty": { "id": 3, "name": "魏晋" }
   },
@@ -319,6 +340,9 @@
     {
       "book_id": "lunyu",
       "name": "论语",
+      "author_name": "孔子",
+      "chaodai": "春秋",
+      "dynasty": null,
       "author": { "author_id": "kongzi", "name": "孔子" }
     }
   ],
@@ -327,6 +351,8 @@
       "mingju_id": "mj-jyl",
       "name": "举头望明月，低头思故乡。",
       "source": "静夜思",
+      "author_name": "李白",
+      "chaodai": "唐代",
       "author": { "author_id": "libai", "name": "李白" }
     }
   ]
@@ -341,13 +367,20 @@
 | `daily_poem.poem_id` | string | 用于跳转诗词详情 |
 | `daily_poem.favorited` | bool | 当前用户是否已收藏该诗词；实时查询，不进入缓存 |
 | `daily_poem.audio` | string \| null | 朗读音频签名 URL（30 分钟有效）；无朗读资源时为 `null` |
+| `daily_poem.author_name` | string \| null | 抓取接口返回的作者文本，`author` 为空时可作为展示回退 |
+| `daily_poem.chaodai` | string \| null | 抓取接口返回的朝代文本，`dynasty` 为空时可作为展示回退 |
 | `recommend_authors[]` | array (10) | 从 `order < 999999` 的作者池随机 10 位 |
 | `recommend_authors[].pic` | string \| null | 头像 URL |
 | `featured_tags[]` | array (≤8) | 固定 8 个 tag（id 23/35/67/20/552/52/49/63），按该顺序返回；DB 中缺失的 id 跳过 |
 | `featured_tags[].zhuanti` | object \| null | 该 tag 关联的专题。有专题：跳转 `/pages/zhuanti/detail?alias=…`；无专题：跳转诗词列表 `tag_id=…` |
 | `featured_tags[].zhuanti.alias` | string | 专题 slug |
 | `featured_books[]` | array (10) | 随机 10 本古籍 |
+| `featured_books[].author_name` | string \| null | 抓取接口返回的作者文本，`author` 为空时可作为展示回退 |
+| `featured_books[].chaodai` | string \| null | 抓取接口返回的朝代文本，`dynasty` 为空时可作为展示回退 |
+| `featured_books[].dynasty` | string \| null | 关联朝代名 |
 | `quotes[]` | array (3) | 随机 3 条 `guishu=1`（诗文出处）且有 `source_poem_id` 的名句 |
+| `quotes[].author_name` | string \| null | 抓取接口返回的作者文本，`author` 为空时可作为展示回退 |
+| `quotes[].chaodai` | string \| null | 抓取接口返回的朝代文本 |
 
 **缓存策略**
 
@@ -388,9 +421,11 @@ curl 'http://localhost/api/home'
   "data": [
     {
       "poem_id": "tb2yd7acup",
-      "name": "桃花源记",
-      "content": "<p>……</p>",
-      "dynasty": { "id": 3, "name": "魏晋" },
+        "name": "桃花源记",
+        "content": "<p>……</p>",
+        "author_name": "陶渊明",
+        "chaodai": "魏晋",
+        "dynasty": { "id": 3, "name": "魏晋" },
       "author": { "author_id": "pchx3eyuar", "name": "陶渊明" },
       "tags": [
         { "id": 51, "name": "专升本" },
@@ -412,6 +447,8 @@ curl 'http://localhost/api/home'
 | `poem_id` | string | slug，用于跳转详情 |
 | `name` | string | 诗词标题 |
 | `content` | string (HTML) | 正文，含 `<p>` `<br>` |
+| `author_name` | string \| null | 抓取接口返回的作者文本，`author` 为空时可作为展示回退 |
+| `chaodai` | string \| null | 抓取接口返回的朝代文本，`dynasty` 为空时可作为展示回退 |
 | `dynasty` | object \| null | 朝代信息 |
 | `dynasty.id` | int | 朝代 ID（可作为 `dynasty_id` 参数） |
 | `dynasty.name` | string | 朝代名 |
@@ -467,6 +504,8 @@ curl 'http://localhost/api/poems?type=词'
   "name": "桃花源记",
   "favorited": false,
   "content": "<p>……</p>",
+  "author_name": "陶渊明",
+  "chaodai": "魏晋",
   "supports": { "yin": true, "yizhu": true },
   "audio": "https://audio.070022.xyz/poem/tb2yd7acup.mp3?ts=1748160000&sign=8e1c…",
   "dynasty": { "id": 3, "name": "魏晋" },
@@ -481,7 +520,12 @@ curl 'http://localhost/api/poems?type=词'
     { "id": 202, "name": "赏析", "content": "<p>……</p>", "order": 0 }
   ],
   "mingjus": [
-    { "mingju_id": "abc123", "name": "黄发垂髫，并怡然自乐。" }
+    {
+      "mingju_id": "abc123",
+      "name": "黄发垂髫，并怡然自乐。",
+      "author_name": "陶渊明",
+      "chaodai": "魏晋"
+    }
   ]
 }
 ```
@@ -494,6 +538,8 @@ curl 'http://localhost/api/poems?type=词'
 | `name` | string | 诗词标题 |
 | `favorited` | bool | 当前用户是否已收藏 |
 | `content` | string (HTML) | 正文 |
+| `author_name` | string \| null | 抓取接口返回的作者文本，`author` 为空时可作为展示回退 |
+| `chaodai` | string \| null | 抓取接口返回的朝代文本，`dynasty` 为空时可作为展示回退 |
 | `supports.yin` | bool | 是否有拼音版（由 `yzsy` 字段含「音」决定）。`true` 时可调 `/api/poems/{poem_id}/yinyi` 取拼音 |
 | `supports.yizhu` | bool | 是否有译注（由 `yzsy` 字段含「注」决定）。`true` 时可调 `/api/poems/{poem_id}/yinyi` 取译注 |
 | `audio` | string \| null | 朗读音频签名 URL（30 分钟有效，Cloudflare Worker 校验 `ts`/`sign`）；无朗读资源时为 `null` |
@@ -510,6 +556,8 @@ curl 'http://localhost/api/poems?type=词'
 | `mingjus[]` | array | 该诗词关联的名句 |
 | `mingjus[].mingju_id` | string | 名句 slug |
 | `mingjus[].name` | string | 名句正文 |
+| `mingjus[].author_name` | string \| null | 名句抓取接口返回的作者文本，`author` 为空时可作为展示回退 |
+| `mingjus[].chaodai` | string \| null | 名句抓取接口返回的朝代文本 |
 
 **边界**
 
@@ -596,6 +644,8 @@ curl 'http://localhost/api/poems/0007dfjviw/yinyi'
         {
           "poem_id": "jingyesi",
           "name": "静夜思",
+          "author_name": "李白",
+          "chaodai": "唐代",
           "author": { "author_id": "libai", "name": "李白" },
           "dynasty": { "id": 6, "name": "唐" }
         }
@@ -619,6 +669,8 @@ curl 'http://localhost/api/poems/0007dfjviw/yinyi'
 | `chapters[].poems[]` | array | 该章节诗词，按 `zhuanti_poems.order ASC` |
 | `chapters[].poems[].poem_id` | string | 诗词 slug |
 | `chapters[].poems[].name` | string | 诗词标题 |
+| `chapters[].poems[].author_name` | string \| null | 抓取接口返回的作者文本，`author` 为空时可作为展示回退 |
+| `chapters[].poems[].chaodai` | string \| null | 抓取接口返回的朝代文本，`dynasty` 为空时可作为展示回退 |
 | `chapters[].poems[].author` | object \| null | 作者，缺失为 `null` |
 | `chapters[].poems[].dynasty` | object \| null | 朝代 |
 
@@ -655,6 +707,8 @@ curl 'http://localhost/api/zhuantis/tangshi'
       "content": "<p>……</p>",
       "class": "经部",
       "type": "四书类",
+      "author_name": "孔子",
+      "chaodai": "春秋",
       "dynasty": "春秋",
       "author": { "author_id": "kongzi", "name": "孔子" }
     }
@@ -674,6 +728,8 @@ curl 'http://localhost/api/zhuantis/tangshi'
 | `content` | string (HTML) | 简介，HTML |
 | `class` | string \| null | 大类 |
 | `type` | string \| null | 小类 |
+| `author_name` | string \| null | 抓取接口返回的作者文本，`author` 为空时可作为展示回退 |
+| `chaodai` | string \| null | 抓取接口返回的朝代文本，`dynasty` 为空时可作为展示回退 |
 | `dynasty` | string \| null | 朝代名 |
 | `author` | object \| null | 作者，缺失为 `null`（佚名） |
 
@@ -706,6 +762,8 @@ curl 'http://localhost/api/books?class=史部&type=正史类'
   "content": "<p>……</p>",
   "class": "经部",
   "type": "四书类",
+  "author_name": "孔子",
+  "chaodai": "春秋",
   "dynasty": "春秋",
   "author": { "author_id": "kongzi", "name": "孔子" },
   "chapters": [
@@ -767,6 +825,9 @@ curl 'http://localhost/api/books/hmwfcrllaq'
   "book": {
     "book_id": "lunyu",
     "name": "论语",
+    "author_name": "孔子",
+    "chaodai": "春秋",
+    "dynasty": "春秋",
     "author": { "author_id": "kongzi", "name": "孔子" }
   },
   "supplements": [
@@ -791,6 +852,9 @@ curl 'http://localhost/api/books/hmwfcrllaq'
 | `chapter.id` | int | 章节内部 ID |
 | `book` | object | 所属古籍简介 |
 | `book.book_id` | string | 古籍 slug |
+| `book.author_name` | string \| null | 古籍抓取接口返回的作者文本，`book.author` 为空时可作为展示回退 |
+| `book.chaodai` | string \| null | 古籍抓取接口返回的朝代文本，`book.dynasty` 为空时可作为展示回退 |
+| `book.dynasty` | string \| null | 古籍关联朝代名 |
 | `book.author` | object \| null | 古籍作者 |
 | `supplements[]` | array | 附属内容（译/注/赏析），按 `id ASC` |
 | `supplements[].id` | int | 内部 ID（前端 wx:key 用，同时承担排序） |
@@ -832,6 +896,8 @@ curl 'http://localhost/api/articles/lunyu-xueer-1'
       "name": "会当凌绝顶，一览众山小。",
       "source": "望岳",
       "guishu": 1,
+      "author_name": "杜甫",
+      "chaodai": "唐代",
       "dynasty": { "id": 6, "name": "唐" },
       "author": { "author_id": "dufu", "name": "杜甫" },
       "sourceBookArticle": null
@@ -851,6 +917,8 @@ curl 'http://localhost/api/articles/lunyu-xueer-1'
 | `name` | string | 名句正文 |
 | `source` | string | 出处文字（如《望岳》、《论语·学而》） |
 | `guishu` | int | 归属类型（1=诗文 / 2=古籍 / 3=谚语 / 4=对联） |
+| `author_name` | string \| null | 抓取接口返回的作者文本，`author` 为空时可作为展示回退 |
+| `chaodai` | string \| null | 抓取接口返回的朝代文本，`dynasty` 为空时可作为展示回退 |
 | `dynasty` | object \| null | 朝代 |
 | `author` | object \| null | 作者，可能为佚名 → `null` |
 | `sourceBookArticle` | object \| null | 当 `guishu=2` 时给出所属古籍/篇章 slug |
@@ -890,6 +958,8 @@ curl 'http://localhost/api/mingjus?tag_id=10&dynasty_id=6'
   "yiwen": "<p>……</p>",
   "zhushi": "<p>……</p>",
   "shangxi": "<p>……</p>",
+  "author_name": "杜甫",
+  "chaodai": "唐代",
   "dynasty": { "id": 6, "name": "唐" },
   "author": { "author_id": "dufu", "name": "杜甫" },
   "tags": [ { "id": 10, "name": "唐诗三百首" } ],
@@ -897,6 +967,8 @@ curl 'http://localhost/api/mingjus?tag_id=10&dynasty_id=6'
     "poem_id": "wangyue",
     "name": "望岳",
     "content": "<p>……</p>",
+    "author_name": "杜甫",
+    "chaodai": "唐代",
     "author": { "author_id": "dufu", "name": "杜甫" },
     "dynasty": { "id": 6, "name": "唐" }
   },
@@ -1129,6 +1201,8 @@ curl 'http://localhost/api/authors/dbzxvttxzu'
       "poem_id": "tb2yd7acup",
       "name": "桃花源记",
       "content": "<p>……</p>",
+      "author_name": "陶渊明",
+      "chaodai": "魏晋",
       "dynasty": { "id": 3, "name": "魏晋" },
       "author": { "author_id": "taoyuanming", "name": "陶渊明" }
     }
@@ -1151,6 +1225,8 @@ curl 'http://localhost/api/authors/dbzxvttxzu'
       "name": "红楼梦",
       "class": "古籍",
       "type": "小说",
+      "author_name": "曹雪芹",
+      "chaodai": "清代",
       "author": { "author_id": "caoxueqin", "name": "曹雪芹" },
       "dynasty": { "id": 11, "name": "清代" }
     }
@@ -1173,8 +1249,8 @@ curl 'http://localhost/api/authors/dbzxvttxzu'
 **各 type 的 `data[]` 结构**
 
 - `type=poem` → 同 `/api/poems` 列表项（不含 `tags`）
-- `type=article` → `{article_id, name, book: {book_id, name, author: {author_id, name} | null} | null}`
-- `type=mingju` → `{mingju_id, name, source, author: {author_id, name} | null}`
+- `type=article` → `{article_id, name, book: {book_id, name, author_name, chaodai, dynasty, author: {author_id, name} | null} | null}`
+- `type=mingju` → `{mingju_id, name, source, author_name, chaodai, author: {author_id, name} | null}`
 - `type=author` → 同 `/api/authors` 列表项（含 `content`/`pic`/`shiwen_num`/`mingju_num`/`dynasty`）
 
 **评分策略（ES 类型）**

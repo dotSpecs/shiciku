@@ -30,9 +30,31 @@
 </div>
 @endif
 @foreach ($books as $book)
+@php
+    $displayDynasty = $book->dynasty?->name ?: $book->chaodai;
+    $displayAuthor = $book->author?->name ?: $book->author_name;
+@endphp
 <div class="card mb-8">
     <h1 class="card-title"><a href="{{ route('book.show', ['book_id' => $book->book_id]) }}" class="link">{{ $book->name }}</a></h1>
     <div class="card-content ">
+        @if($displayDynasty || $displayAuthor)
+        <div class="secondary text-sm mb-3">
+            作者：
+            @if($book->dynasty)
+            {{ $book->dynasty->name }}
+            @elseif($book->chaodai)
+            {{ $book->chaodai }}
+            @endif
+            @if($displayDynasty && $displayAuthor)
+            ·
+            @endif
+            @if($book->author)
+            <a class="link secondary" href="{{ route('author.show', $book->author->author_id) }}">{{ $book->author->name }}</a>
+            @elseif($displayAuthor)
+            {{ $displayAuthor }}
+            @endif
+        </div>
+        @endif
         <div class="escape-html line-clamp-3">
             {!! $book->content !!}
         </div>

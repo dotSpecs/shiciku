@@ -32,7 +32,7 @@ class PoemController extends Controller
         }
 
         $query = Poem::query()
-            ->select('id', 'poem_id', 'name', 'content', 'dynasty_id', 'author_id')
+            ->select('id', 'poem_id', 'name', 'content', 'author_id', 'author_name', 'dynasty_id', 'chaodai')
             ->with([
                 'author:id,author_id,name',
                 'dynasty:id,name',
@@ -74,7 +74,7 @@ class PoemController extends Controller
     public function show(Request $request, string $poem_id): JsonResponse
     {
         $poem = Poem::query()
-            ->select('id', 'poem_id', 'name', 'content', 'yzsy', 'langsong_url', 'dynasty_id', 'author_id')
+            ->select('id', 'poem_id', 'name', 'content', 'yzsy', 'langsong_url', 'author_id', 'author_name', 'dynasty_id', 'chaodai')
             ->where('poem_id', $poem_id)
             ->with([
                 'author:id,author_id,name,pic',
@@ -123,6 +123,8 @@ class PoemController extends Controller
             'poem_id' => $poem->poem_id,
             'name' => $poem->name,
             'content' => $poem->content,
+            'author_name' => $poem->author_name,
+            'chaodai' => $poem->chaodai,
             'dynasty' => $poem->dynasty ? [
                 'id' => $poem->dynasty->id,
                 'name' => $poem->dynasty->name,
@@ -142,6 +144,8 @@ class PoemController extends Controller
             'name' => $poem->name,
             'favorited' => $favorited,
             'content' => $poem->content,
+            'author_name' => $poem->author_name,
+            'chaodai' => $poem->chaodai,
             'supports' => [
                 'yin' => $poem->supportsYin(),
                 'yizhu' => $poem->supportsYizhu(),
@@ -172,6 +176,8 @@ class PoemController extends Controller
             'mingjus' => $poem->mingjus->map(fn ($m) => [
                 'mingju_id' => $m->mingju_id,
                 'name' => $m->name,
+                'author_name' => $m->author_name,
+                'chaodai' => $m->chaodai,
             ])->values()->all(),
         ];
     }

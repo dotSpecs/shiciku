@@ -39,7 +39,8 @@ class BookController extends Controller
         });
 
         $query = Book::query()
-            ->select(['id', 'book_id', 'name', 'content'])
+            ->select(['id', 'book_id', 'name', 'content', 'author_id', 'author_name', 'dynasty_id', 'chaodai'])
+            ->with(['author:id,author_id,name', 'dynasty:id,name'])
             ->orderBy('id');
 
         if ($class) {
@@ -71,12 +72,13 @@ class BookController extends Controller
 
     public function show($book_id)
     {
-        $book = Cache::remember('book-of-' . $book_id, 1800, function () use ($book_id) {
+        $book = Cache::remember('book-of-v2-' . $book_id, 1800, function () use ($book_id) {
             return Book::query()
-                ->select(['id', 'book_id', 'name', 'content', 'author_id'])
+                ->select(['id', 'book_id', 'name', 'content', 'author_id', 'author_name', 'dynasty_id', 'chaodai'])
                 ->where('book_id', $book_id)
                 ->with([
                     'author:id,author_id,name',
+                    'dynasty:id,name',
                     'chapters:id,book_id,name,order',
                     'chapters.articles:id,article_id,chapter_id,name,order',
                 ])
@@ -92,10 +94,11 @@ class BookController extends Controller
 
     public function article($book_id, $article_id)
     {
-        $book = Cache::remember('book-basic-' . $book_id, 1800, function () use ($book_id) {
+        $book = Cache::remember('book-basic-v2-' . $book_id, 1800, function () use ($book_id) {
             return Book::query()
-                ->select(['id', 'book_id', 'name', 'author_id'])
+                ->select(['id', 'book_id', 'name', 'author_id', 'author_name', 'dynasty_id', 'chaodai'])
                 ->where('book_id', $book_id)
+                ->with(['author:id,author_id,name', 'dynasty:id,name'])
                 ->first();
         });
 
@@ -103,7 +106,7 @@ class BookController extends Controller
             return redirect()->route('book.index');
         }
 
-        $article = Cache::remember('book-article-' . $article_id, 1800, function () use ($article_id, $book) {
+        $article = Cache::remember('book-article-v2-' . $article_id, 1800, function () use ($article_id, $book) {
             $article = BookArticle::query()
                 ->select(['id', 'article_id', 'book_id', 'chapter_id', 'name', 'content'])
                 ->where('article_id', $article_id)
@@ -117,7 +120,7 @@ class BookController extends Controller
                 return null;
             }
 
-            $article->setRelation('book', $book->loadMissing('author:id,author_id,name'));
+            $article->setRelation('book', $book->loadMissing(['author:id,author_id,name', 'dynasty:id,name']));
 
             $article->previous = BookArticle::query()
                 ->select('id', 'article_id', 'name')

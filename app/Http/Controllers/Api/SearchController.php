@@ -62,6 +62,8 @@ class SearchController extends Controller
                 'poem_id' => $p->poem_id,
                 'name' => $p->name,
                 'content' => $p->content,
+                'author_name' => $p->author_name,
+                'chaodai' => $p->chaodai,
                 'dynasty' => $p->dynasty ? ['id' => $p->dynasty->id, 'name' => $p->dynasty->name] : null,
                 'author' => $p->author ? ['author_id' => $p->author->author_id, 'name' => $p->author->name] : null,
             ])->values()->all(),
@@ -81,7 +83,7 @@ class SearchController extends Controller
         ], orderField: 'book_order');
 
         $paginator = BookArticle::searchQuery($esQuery)
-            ->load(['book:id,book_id,name,author_id', 'book.author:id,author_id,name'])
+            ->load(['book:id,book_id,name,author_id,author_name,dynasty_id,chaodai', 'book.author:id,author_id,name', 'book.dynasty:id,name'])
             ->paginate(self::PER_PAGE, 'page', $page)
             ->onlyModels();
 
@@ -96,6 +98,9 @@ class SearchController extends Controller
                 'book' => $a->book ? [
                     'book_id' => $a->book->book_id,
                     'name' => $a->book->name,
+                    'author_name' => $a->book->author_name,
+                    'chaodai' => $a->book->chaodai,
+                    'dynasty' => $a->book->dynasty?->name,
                     'author' => $a->book->author ? [
                         'author_id' => $a->book->author->author_id,
                         'name' => $a->book->author->name,
@@ -113,7 +118,7 @@ class SearchController extends Controller
     {
         $like = '%' . $this->escapeLike($q) . '%';
         return Book::query()
-            ->select('id', 'book_id', 'name', 'class', 'type', 'author_id', 'dynasty_id')
+            ->select('id', 'book_id', 'name', 'class', 'type', 'author_id', 'author_name', 'dynasty_id', 'chaodai')
             ->with(['author:id,author_id,name', 'dynasty:id,name'])
             ->where('name', 'like', $like)
             ->orderBy('order')
@@ -125,6 +130,8 @@ class SearchController extends Controller
                 'name' => $b->name,
                 'class' => $b->class,
                 'type' => $b->type,
+                'author_name' => $b->author_name,
+                'chaodai' => $b->chaodai,
                 'author' => $b->author ? ['author_id' => $b->author->author_id, 'name' => $b->author->name] : null,
                 'dynasty' => $b->dynasty ? ['id' => $b->dynasty->id, 'name' => $b->dynasty->name] : null,
             ])
@@ -136,7 +143,7 @@ class SearchController extends Controller
     {
         $like = '%' . $this->escapeLike($q) . '%';
         $paginator = Mingju::query()
-            ->select('id', 'mingju_id', 'name', 'source', 'guishu', 'author_id')
+            ->select('id', 'mingju_id', 'name', 'source', 'guishu', 'author_id', 'author_name', 'chaodai')
             ->with('author:id,author_id,name')
             ->where('name', 'like', $like)
             ->orderBy('order')
@@ -149,6 +156,8 @@ class SearchController extends Controller
                 'mingju_id' => $m->mingju_id,
                 'name' => $m->name,
                 'source' => $m->source,
+                'author_name' => $m->author_name,
+                'chaodai' => $m->chaodai,
                 'author' => $m->author ? ['author_id' => $m->author->author_id, 'name' => $m->author->name] : null,
             ])->values()->all(),
             'current_page' => $paginator->currentPage(),

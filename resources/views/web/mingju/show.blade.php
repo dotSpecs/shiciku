@@ -1,15 +1,22 @@
 @extends('web.layout')
 
-@section('title', $mingju->name . '的出处、译文、注释、赏析' . ($mingju->author ? ' - 【' . ($mingju->dynasty ? $mingju->dynasty->name : '') . '】' . $mingju->author->name : ''))
+@php
+    $displayDynasty = $mingju->dynasty?->name ?: $mingju->chaodai;
+    $displayAuthor = $mingju->author?->name ?: $mingju->author_name;
+@endphp
 
-@section('keywords', $mingju->name . ',' . ($mingju->author ? $mingju->author->name . ',' : '') . ($mingju->source ? $mingju->source . ',' : ''))
-@section('description', $mingju->name . '的出处、译文、注释、赏析,' . ($mingju->author ? $mingju->author->name . ',' : '') . ($mingju->source ? '出自' . $mingju->source : ''))
+@section('title', $mingju->name . '的出处、译文、注释、赏析' . ($displayDynasty ? ' - 【' . $displayDynasty . '】' : '') . ($displayAuthor ?: ''))
+
+@section('keywords', $mingju->name . ',' . ($displayAuthor ? $displayAuthor . ',' : '') . ($mingju->source ? $mingju->source . ',' : ''))
+@section('description', $mingju->name . '的出处、译文、注释、赏析,' . ($displayAuthor ? $displayAuthor . ',' : '') . ($mingju->source ? '出自' . $mingju->source : ''))
 
 @section('content')
 
 @php
     $poem = $mingju->sourcePoem;
     $article = $mingju->sourceBookArticle;
+    $poemDisplayDynasty = $poem ? ($poem->dynasty?->name ?: $poem->chaodai) : null;
+    $poemDisplayAuthor = $poem ? ($poem->author?->name ?: $poem->author_name) : null;
     if ($mingju->guishu == 1 && $poem) {
         $sourceUrl = route('poem.show', poem_slug($poem));
     } elseif ($mingju->guishu == 2 && $article && $article->book) {
@@ -22,16 +29,18 @@
 <div class="mingju card mb-8">
     <h1 class="card-title text-xl">{{ $mingju->name }}</h1>
     <div class="card-content">
-        @if ($mingju->dynasty || $mingju->author || $mingju->source)
+        @if ($displayDynasty || $displayAuthor || $mingju->source)
         <div class="secondary mb-6">
             出自
             @if ($mingju->dynasty)
                 <a href="{{ route('poem.index', ['dynasty_id' => $mingju->dynasty->id]) }}" class="link secondary">{{ $mingju->dynasty->name }}</a>
+            @elseif ($mingju->chaodai)
+                {{ $mingju->chaodai }}
             @endif
             @if ($mingju->author)
                 <a href="{{ route('author.show', $mingju->author->author_id) }}" class="link secondary">{{ $mingju->author->name }}</a>的
-            @else
-                佚名的
+            @elseif ($displayAuthor)
+                {{ $displayAuthor }}的
             @endif
             @if ($mingju->source)
                 @if ($sourceUrl)
@@ -84,11 +93,13 @@
             <a href="{{ route('poem.index', ['dynasty_id' => $poem->dynasty->id]) }}" class="link secondary">
                 {{ $poem->dynasty->name }}
             </a> ·
+            @elseif($poem->chaodai)
+            {{ $poem->chaodai }} ·
             @endif
             @if($poem->author)
             <a href="{{ route('author.show', $poem->author->author_id) }}" class="link secondary">{{ $poem->author->name }}</a>
-            @else
-            佚名
+            @elseif($poemDisplayAuthor)
+            {{ $poemDisplayAuthor }}
             @endif
         </div>
         <div class="poem-content escape-html leading-10 [&>p]:mb-6">{!! $poem->content !!}</div>

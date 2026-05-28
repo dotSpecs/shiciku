@@ -28,7 +28,7 @@ class BookController extends Controller
         }
 
         $query = Book::query()
-            ->select('id', 'book_id', 'name', 'content', 'class', 'type', 'author_id', 'dynasty_id')
+            ->select('id', 'book_id', 'name', 'content', 'class', 'type', 'author_id', 'author_name', 'dynasty_id', 'chaodai')
             ->with(['author:id,author_id,name', 'dynasty:id,name'])
             ->orderBy('order')
             ->orderBy('id');
@@ -53,7 +53,7 @@ class BookController extends Controller
     public function show(Request $request, string $book_id): JsonResponse
     {
         $book = Book::query()
-            ->select('id', 'book_id', 'name', 'content', 'class', 'type', 'author_id', 'dynasty_id')
+            ->select('id', 'book_id', 'name', 'content', 'class', 'type', 'author_id', 'author_name', 'dynasty_id', 'chaodai')
             ->where('book_id', $book_id)
             ->with([
                 'author:id,author_id,name',
@@ -81,8 +81,9 @@ class BookController extends Controller
             ->where('article_id', $article_id)
             ->with([
                 'chapter:id,name',
-                'book:id,book_id,name,author_id',
+                'book:id,book_id,name,author_id,author_name,dynasty_id,chaodai',
                 'book.author:id,author_id,name',
+                'book.dynasty:id,name',
                 'supplements' => fn ($q) => $q->select('id', 'article_id', 'name', 'content')->orderBy('id'),
             ])
             ->first();
@@ -110,6 +111,8 @@ class BookController extends Controller
             'content' => $book->content,
             'class' => $book->class,
             'type' => $book->type,
+            'author_name' => $book->author_name,
+            'chaodai' => $book->chaodai,
             'dynasty' => $book->dynasty?->name,
             'author' => $book->author ? [
                 'author_id' => $book->author->author_id,
@@ -127,6 +130,8 @@ class BookController extends Controller
             'content' => $book->content,
             'class' => $book->class,
             'type' => $book->type,
+            'author_name' => $book->author_name,
+            'chaodai' => $book->chaodai,
             'dynasty' => $book->dynasty?->name,
             'author' => $book->author ? [
                 'author_id' => $book->author->author_id,
@@ -168,6 +173,9 @@ class BookController extends Controller
             'book' => [
                 'book_id' => $book->book_id,
                 'name' => $book->name,
+                'author_name' => $book->author_name,
+                'chaodai' => $book->chaodai,
+                'dynasty' => $book->dynasty?->name,
                 'author' => $book->author ? [
                     'author_id' => $book->author->author_id,
                     'name' => $book->author->name,

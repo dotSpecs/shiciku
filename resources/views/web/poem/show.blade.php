@@ -1,9 +1,14 @@
 @extends('web.layout')
 
-@section('title', $poem->name . '的原文、注释、翻译、赏析、序' . ($poem->dynasty ? ' - 【' . $poem->dynasty->name .'】' : '') . ($poem->author ? $poem->author->name : ''))
+@php
+    $displayDynasty = $poem->dynasty?->name ?: $poem->chaodai;
+    $displayAuthor = $poem->author?->name ?: $poem->author_name;
+@endphp
 
-@section('keywords', $poem->name . ',' . ($poem->dynasty ? $poem->dynasty->name . ',' : '') . ($poem->author ? $poem->author->name . ',' : ''))
-@section('description', $poem->name . '的原文、注释、翻译、赏析、序,' . ($poem->dynasty ? $poem->dynasty->name  : '') . ($poem->author ? $poem->author->name . '的' : '') . '诗词,')
+@section('title', $poem->name . '的原文、注释、翻译、赏析、序' . ($displayDynasty ? ' - 【' . $displayDynasty .'】' : '') . ($displayAuthor ?: ''))
+
+@section('keywords', $poem->name . ',' . ($displayDynasty ? $displayDynasty . ',' : '') . ($displayAuthor ? $displayAuthor . ',' : ''))
+@section('description', $poem->name . '的原文、注释、翻译、赏析、序,' . ($displayDynasty ?: '') . ($displayAuthor ? $displayAuthor . '的' : '') . '诗词,')
 
 
 @section('content')
@@ -25,13 +30,15 @@
             <a href="{{ route('poem.index', ['dynasty_id' => $poem->dynasty->id]) }}" class="link secondary" id="poem-dynasty">
                 {{ $poem->dynasty->name }}
             </a> ·
+            @elseif($poem->chaodai)
+            <span id="poem-dynasty">{{ $poem->chaodai }}</span> ·
             @endif
             @if($poem->author)
             <a href="{{ route('author.show', $poem->author->author_id) }}" class="link secondary" id="poem-author">
                 {{ $poem->author->name }}
             </a>
-            @else
-            <span id="poem-author">佚名</span>
+            @elseif($poem->author_name)
+            <span id="poem-author">{{ $poem->author_name }}</span>
             @endif
         </div>
         <div class="poem-content escape-html leading-10 [&>p]:mb-6" id="poem-content">{!! $poem->content !!}</div>
@@ -40,8 +47,8 @@
         <script>
             window.poemData = {
                 title: @json($poem->name),
-                dynasty: @json($poem->dynasty ? $poem->dynasty->name : ''),
-                author: @json($poem->author ? $poem->author->name : '佚名'),
+                dynasty: @json($displayDynasty ?: ''),
+                author: @json($displayAuthor ?: ''),
                 content: @json($poem->content)
             };
         </script>

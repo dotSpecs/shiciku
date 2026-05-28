@@ -16,11 +16,13 @@
         <div class="secondary text-sm mb-3">
             @if ($daily->poem->dynasty)
                 {{ $daily->poem->dynasty->name }} ·
+            @elseif ($daily->poem->chaodai)
+                {{ $daily->poem->chaodai }} ·
             @endif
             @if ($daily->poem->author)
                 <a href="{{ route('author.show', $daily->poem->author->author_id) }}" class="link secondary">{{ $daily->poem->author->name }}</a>
-            @else
-                佚名
+            @elseif ($daily->poem->author_name)
+                {{ $daily->poem->author_name }}
             @endif
         </div>
         <div class="escape-html leading-10 [&>p]:mb-3 line-clamp-6">{!! $daily->poem->content !!}</div>

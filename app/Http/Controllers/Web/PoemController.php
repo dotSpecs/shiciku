@@ -56,7 +56,7 @@ class PoemController extends Controller
         $tag = null;
 
         $query = Poem::query()
-            ->select('id', 'poem_id', 'name', 'content', 'dynasty_id', 'author_id')
+            ->select('id', 'poem_id', 'name', 'content', 'author_id', 'author_name', 'dynasty_id', 'chaodai')
             ->with(['author:id,author_id,name', 'dynasty:id,name'])
             ->orderBy('order')
             ->orderBy('id');
@@ -140,7 +140,7 @@ class PoemController extends Controller
 
         $poem = Cache::remember('poem-of-' . $poem_id, 300, function () use ($poem_id) {
             return Poem::query()
-                ->select(['id', 'poem_id', 'name', 'content', 'yizhu_content', 'dynasty_id', 'author_id'])
+                ->select(['id', 'poem_id', 'name', 'content', 'yizhu_content', 'author_id', 'author_name', 'dynasty_id', 'chaodai'])
                 ->where('poem_id', $poem_id)
                 ->with([
                     'author:id,author_id,name,content,pic,pic_small',
@@ -211,7 +211,7 @@ class PoemController extends Controller
                 ->with(['chapters' => function ($q) {
                     $q->select(['id', 'zhuanti_id', 'name', 'sub_title', 'sort'])
                         ->with(['poems' => function ($pq) {
-                            $pq->select(['poems.id', 'poems.poem_id', 'poems.name', 'poems.author_id', 'poems.dynasty_id'])
+                            $pq->select(['poems.id', 'poems.poem_id', 'poems.name', 'poems.author_id', 'poems.author_name', 'poems.dynasty_id', 'poems.chaodai'])
                                 ->with(['author:id,author_id,name', 'dynasty:id,name']);
                         }]);
                 }])

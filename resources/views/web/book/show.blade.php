@@ -1,17 +1,35 @@
 @extends('web.layout')
 
-@section('title', '古籍：' . $book->name . '的全文及简介' . ($book->author ? ' - 作者：' . $book->author->name : ''))
+@php
+    $displayDynasty = $book->dynasty?->name ?: $book->chaodai;
+    $displayAuthor = $book->author?->name ?: $book->author_name;
+@endphp
 
-@section('keywords', $book->name . ',' . ($book->author ? $book->author->name . ',' : ''))
-@section('description', $book->name . '古籍全文及简介,' . ($book->author ? $book->author->name . '的古籍,' : ''))
+@section('title', '古籍：' . $book->name . '的全文及简介' . ($displayAuthor ? ' - 作者：' . $displayAuthor : ''))
+
+@section('keywords', $book->name . ',' . ($displayAuthor ? $displayAuthor . ',' : ''))
+@section('description', $book->name . '古籍全文及简介,' . ($displayAuthor ? $displayAuthor . '的古籍,' : ''))
 
 @section('content')
 <div class="card mb-8">
     <h1 class="card-title">{{ $book->name }}</h1>
     <div class="card-content escape-html leading-10">
-        @if($book->author)
+        @if($displayDynasty || $displayAuthor)
         <p class="secondary">
-            作者：<a class="link secondary" href="{{ route('author.show', $book->author->author_id) }}">{{ $book->author->name }}</a>
+            作者：
+            @if($book->dynasty)
+            {{ $book->dynasty->name }}
+            @elseif($book->chaodai)
+            {{ $book->chaodai }}
+            @endif
+            @if($displayDynasty && $displayAuthor)
+            ·
+            @endif
+            @if($book->author)
+            <a class="link secondary" href="{{ route('author.show', $book->author->author_id) }}">{{ $book->author->name }}</a>
+            @elseif($displayAuthor)
+            {{ $displayAuthor }}
+            @endif
         </p>
         @endif
         <div class="escape-html leading-10 [&>p]:mb-6">

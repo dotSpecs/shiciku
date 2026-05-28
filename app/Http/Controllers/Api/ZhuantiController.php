@@ -17,7 +17,7 @@ class ZhuantiController extends Controller
             ->with(['chapters' => function ($q) {
                 $q->select('id', 'zhuanti_id', 'name', 'sub_title', 'sort')
                     ->with(['poems' => function ($pq) {
-                        $pq->select('poems.id', 'poems.poem_id', 'poems.name', 'poems.author_id', 'poems.dynasty_id')
+                        $pq->select('poems.id', 'poems.poem_id', 'poems.name', 'poems.author_id', 'poems.author_name', 'poems.dynasty_id', 'poems.chaodai')
                             ->with(['author:id,author_id,name', 'dynasty:id,name']);
                     }]);
             }])
@@ -43,6 +43,8 @@ class ZhuantiController extends Controller
                 'poems' => $c->poems->map(fn ($p) => [
                     'poem_id' => $p->poem_id,
                     'name' => $p->name,
+                    'author_name' => $p->author_name,
+                    'chaodai' => $p->chaodai,
                     'author' => $p->author ? [
                         'author_id' => $p->author->author_id,
                         'name' => $p->author->name,

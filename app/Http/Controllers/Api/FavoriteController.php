@@ -55,7 +55,9 @@ class FavoriteController extends Controller
                         ],
                         BookArticle::class => [
                             'chapter:id,name',
-                            'book:id,book_id,name',
+                            'book:id,book_id,name,author_id,author_name,dynasty_id,chaodai',
+                            'book.author:id,author_id,name',
+                            'book.dynasty:id,name',
                         ],
                     ]);
                 },
@@ -174,6 +176,8 @@ class FavoriteController extends Controller
             $model instanceof Poem => [
                 'poem_id' => $model->poem_id,
                 'name' => $model->name,
+                'author_name' => $model->author_name,
+                'chaodai' => $model->chaodai,
                 'dynasty' => $model->dynasty ? [
                     'id' => $model->dynasty->id,
                     'name' => $model->dynasty->name,
@@ -188,6 +192,8 @@ class FavoriteController extends Controller
                 'name' => $model->name,
                 'source' => $model->source,
                 'guishu' => (int) $model->guishu,
+                'author_name' => $model->author_name,
+                'chaodai' => $model->chaodai,
                 'author' => $model->author ? [
                     'author_id' => $model->author->author_id,
                     'name' => $model->author->name,
@@ -198,6 +204,8 @@ class FavoriteController extends Controller
                 'name' => $model->name,
                 'class' => $model->class,
                 'type' => $model->type,
+                'author_name' => $model->author_name,
+                'chaodai' => $model->chaodai,
                 'dynasty' => $model->dynasty ? [
                     'id' => $model->dynasty->id,
                     'name' => $model->dynasty->name,
@@ -217,6 +225,16 @@ class FavoriteController extends Controller
                 'book' => $model->book ? [
                     'book_id' => $model->book->book_id,
                     'name' => $model->book->name,
+                    'author_name' => $model->book->author_name,
+                    'chaodai' => $model->book->chaodai,
+                    'dynasty' => $model->book->dynasty ? [
+                        'id' => $model->book->dynasty->id,
+                        'name' => $model->book->dynasty->name,
+                    ] : null,
+                    'author' => $model->book->author ? [
+                        'author_id' => $model->book->author->author_id,
+                        'name' => $model->book->author->name,
+                    ] : null,
                 ] : null,
             ],
             default => null,

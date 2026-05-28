@@ -58,7 +58,7 @@ class Poem extends Model
     public function mingjus(): HasMany
     {
         return $this->hasMany(Mingju::class, 'source_poem_id', 'id')
-            ->select(['id', 'source_poem_id', 'mingju_id', 'name']);
+            ->select(['id', 'source_poem_id', 'mingju_id', 'name', 'author_name', 'chaodai']);
     }
 
     public function supportsYin(): bool

@@ -25,7 +25,7 @@ class HotPoem extends Component
     {
         $poems = Cache::remember('index-hot-poems-' . $this->limit, 60 * 5, function () {
             return Poem::query()
-                ->select(['id', 'poem_id', 'name', 'content', 'dynasty_id', 'author_id'])
+                ->select(['id', 'poem_id', 'name', 'content', 'author_id', 'author_name', 'dynasty_id', 'chaodai'])
                 ->with(['dynasty:id,name', 'author:id,author_id,name'])
                 ->where('order', '<=', 8000)
                 ->inRandomOrder()
@@ -36,4 +36,3 @@ class HotPoem extends Component
         return view('components.sidebar.hot-poem', compact('poems'));
     }
 }
-
