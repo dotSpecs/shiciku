@@ -56,7 +56,8 @@ class DailyPoemService
             ->all();
 
         $candidatePool = DB::table('zhuanti_poems')
-            ->where('zhuanti_id', '!=', 14)
+            // ->where('zhuanti_id', '!=', 14)
+            ->whereIn('zhuanti_id', [4, 5, 6])
             ->select('poem_id')
             ->distinct();
 

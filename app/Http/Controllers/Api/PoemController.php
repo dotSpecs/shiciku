@@ -32,14 +32,11 @@ class PoemController extends Controller
         }
 
         $query = Poem::query()
-            ->select('id', 'poem_id', 'name', 'content', 'author_id', 'author_name', 'dynasty_id', 'chaodai')
             ->with([
                 'author:id,author_id,name',
                 'dynasty:id,name',
                 'tags:id,name',
-            ])
-            ->orderBy('order')
-            ->orderBy('id');
+            ]);
 
         if ($authorSlug) {
             $author = Author::select('id')->where('author_id', $authorSlug)->first();
@@ -54,7 +51,19 @@ class PoemController extends Controller
         }
 
         if ($tagId) {
-            $query->whereHas('tags', fn ($q) => $q->where('tag_id', (int) $tagId));
+            $query->select('poems.id', 'poems.poem_id', 'poems.name', 'poems.content', 'poems.author_id', 'poems.author_name', 'poems.dynasty_id', 'poems.chaodai')
+                ->whereHas('tags', fn ($q) => $q->where('tag_id', (int) $tagId))
+                ->join('poem_tag', function ($join) use ($tagId) {
+                    $join->on('poems.id', '=', 'poem_tag.poem_id')
+                        ->where('poem_tag.tag_id', '=', (int) $tagId);
+                })
+                ->orderBy('poem_tag.order')
+                ->orderBy('poems.order')
+                ->orderBy('poems.id');
+        } else {
+            $query->select('id', 'poem_id', 'name', 'content', 'author_id', 'author_name', 'dynasty_id', 'chaodai')
+                ->orderBy('order')
+                ->orderBy('id');
         }
 
         if ($type && in_array($type, self::ALLOWED_TYPES, true)) {

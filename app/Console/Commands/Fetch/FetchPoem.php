@@ -3,6 +3,7 @@
 namespace App\Console\Commands\Fetch;
 
 use App\Models\Author;
+use App\Models\Tag;
 use App\Services\Guwendao\HttpClient;
 use App\Services\Guwendao\PoemFetcher;
 use App\Services\Guwendao\TagResolver;
@@ -24,10 +25,11 @@ class FetchPoem extends Command
         {--all-type : 依次抓取所有形式(诗/词/曲/文)}
         {--all-chaodai : 依次抓取所有朝代}
         {--all-author : 依次抓取库内所有作者}
+        {--all-tag : 依次抓取所有普通标签(不含专题)}
         {--all-legacy : 从 gushiwen2.poems 按 id 升序遍历所有诗词}
         {--from= : 配合 --all-legacy，从指定 legacy.poems.id 开始}';
 
-    protected $description = '抓取诗词正文+拼音+翻译+赏析+标签，支持 tag/type/chaodai/author 过滤及批量遍历';
+    protected $description = '抓取诗词正文+拼音+翻译+赏析+标签，支持 tag/type/chaodai/author 过滤及批量遍历（含 --all-tag）';
 
     private const TYPES = ['诗', '词', '曲', '文'];
 
@@ -81,6 +83,18 @@ class FetchPoem extends Command
             return self::SUCCESS;
         }
 
+        if ($this->option('all-tag')) {
+            $tags = Tag::whereNull('zhuanti_id')->orderBy('id')->where('id', '>=', 868)->get();
+            $count = $tags->count();
+            $this->info("########## 共 {$count} 个标签 ##########");
+            foreach ($tags as $i => $tag) {
+                $idx = $i + 1;
+                $this->info("########## [{$idx}/{$count}] tag: {$tag->name} ##########");
+                $this->fetchPages(['tag' => $tag->name], 1, true);
+            }
+            return self::SUCCESS;
+        }
+
         if ($this->option('all-legacy')) {
             return $this->fetchLegacy((int) ($this->option('from') ?: 0));
         }
@@ -98,7 +112,7 @@ class FetchPoem extends Command
             return self::SUCCESS;
         }
 
-        $this->error('需指定 --id-str 或 --page/--tag/--type/--chaodai/--author/--all/--all-type/--all-chaodai/--all-author/--all-legacy');
+        $this->error('需指定 --id-str 或 --page/--tag/--type/--chaodai/--author/--all/--all-type/--all-chaodai/--all-author/--all-tag/--all-legacy');
         return self::FAILURE;
     }
 

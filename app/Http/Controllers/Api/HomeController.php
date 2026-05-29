@@ -19,7 +19,8 @@ class HomeController extends Controller
 {
     use ResolvesFavoriteStatus;
 
-    private const FEATURED_TAG_IDS = [23, 35, 67, 20, 552, 52, 49, 63];
+    private const FEATURED_TAG_IDS = [10, 249, 552, 20, 52, 49, 63, 55];
+    private const QUOTE_TAG_IDS = [23, 35, 67, 447, 263, 262];
     private const CACHE_TTL = 300;
 
     public function __construct(private DailyPoemService $daily)
@@ -30,10 +31,10 @@ class HomeController extends Controller
     {
         return response()->json([
             'daily_poem' => $this->dailyPayload($request),
-            'recommend_authors' => Cache::remember('home:authors', self::CACHE_TTL, fn () => $this->randomAuthors()),
+            'recommend_authors' => Cache::remember('home:authors:v2', self::CACHE_TTL, fn () => $this->randomAuthors()),
             'featured_tags' => Cache::remember('home:tags', self::CACHE_TTL, fn () => $this->featuredTags()),
             'featured_books' => Cache::remember('home:books', self::CACHE_TTL, fn () => $this->randomBooks()),
-            'quotes' => Cache::remember('home:quotes', self::CACHE_TTL, fn () => $this->randomQuotes()),
+            'quotes' => Cache::remember('home:quotes:v4', self::CACHE_TTL, fn () => $this->randomQuotes()),
         ]);
     }
 
@@ -61,7 +62,7 @@ class HomeController extends Controller
     {
         return Author::query()
             ->select('id', 'author_id', 'name', 'pic', 'dynasty_id', 'order')
-            ->where('order', '<=', 5020)
+            ->where('order', '<=', 5010)
             ->where('pic', '!=', '')
             ->with('dynasty:id,name')
             ->inRandomOrder()
@@ -83,7 +84,10 @@ class HomeController extends Controller
         $tags = Tag::query()
             ->select('id', 'name', 'zhuanti_id')
             ->whereIn('id', self::FEATURED_TAG_IDS)
-            ->with('zhuanti:id,alias,name')
+            ->withCount('poems')
+            ->with(['zhuanti' => function ($q) {
+                $q->select('id', 'alias', 'name')->withCount('poems');
+            }])
             ->get()
             ->keyBy('id');
 
@@ -93,9 +97,15 @@ class HomeController extends Controller
             if (!$tag) {
                 continue;
             }
+
+            // 有专题时使用专题的诗词数，否则使用 tag 的诗词数
+            $poemCount = $tag->zhuanti ? $tag->zhuanti->poems_count : $tag->poems_count;
+
             $ordered[] = [
                 'id' => $tag->id,
                 'name' => $tag->name,
+                'icon' => '/static/images/tags/' . $tag->id . '.png',
+                'poem_count' => $poemCount,
                 'zhuanti' => $tag->zhuanti ? [
                     'alias' => $tag->zhuanti->alias,
                     'name' => $tag->zhuanti->name,
@@ -133,10 +143,11 @@ class HomeController extends Controller
             ->select('id', 'mingju_id', 'name', 'source', 'guishu', 'author_id', 'author_name', 'chaodai', 'order')
             ->where('guishu', Mingju::GUISHU_SHIWEN)
             ->whereNotNull('source_poem_id')
+            ->whereHas('sourcePoem.tags', fn ($q) => $q->whereIn('tag_id', self::QUOTE_TAG_IDS))
             ->with('author:id,author_id,name')
             ->where('order', '<=', 500)
             ->inRandomOrder()
-            ->limit(3)
+            ->limit(5)
             ->get()
             ->sortBy('order')
             ->map(fn (Mingju $m) => [

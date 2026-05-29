@@ -56,10 +56,7 @@ class PoemController extends Controller
         $tag = null;
 
         $query = Poem::query()
-            ->select('id', 'poem_id', 'name', 'content', 'author_id', 'author_name', 'dynasty_id', 'chaodai')
-            ->with(['author:id,author_id,name', 'dynasty:id,name'])
-            ->orderBy('order')
-            ->orderBy('id');
+            ->with(['author:id,author_id,name', 'dynasty:id,name']);
 
         if ($author_id) {
             $author = Cache::remember('author-by-author_id-' . $author_id, 3600, function () use ($author_id) {
@@ -84,10 +81,24 @@ class PoemController extends Controller
                 return Tag::select('id', 'name')->where('id', $tag_id)->first();
             });
             if ($tag) {
-                $query->whereHas('tags', function ($query) use ($tag) {
-                    $query->where('tag_id', $tag->id);
-                });
+                $query->select('poems.id', 'poems.poem_id', 'poems.name', 'poems.content', 'poems.author_id', 'poems.author_name', 'poems.dynasty_id', 'poems.chaodai')
+                    ->whereHas('tags', function ($query) use ($tag) {
+                        $query->where('tag_id', $tag->id);
+                    })
+                    ->join('poem_tag', function ($join) use ($tag) {
+                        $join->on('poems.id', '=', 'poem_tag.poem_id')
+                            ->where('poem_tag.tag_id', '=', $tag->id);
+                    })
+                    ->orderBy('poem_tag.order')
+                    ->orderBy('poems.order')
+                    ->orderBy('poems.id');
             }
+        }
+
+        if (!$tag_id) {
+            $query->select('id', 'poem_id', 'name', 'content', 'author_id', 'author_name', 'dynasty_id', 'chaodai')
+                ->orderBy('order')
+                ->orderBy('id');
         }
 
         if ($page > 50) {

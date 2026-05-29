@@ -62,7 +62,7 @@ class EsQueryBuilder
                         'gauss' => [
                             $orderField => ['origin' => 0, 'scale' => 5000, 'decay' => 0.5],
                         ],
-                        'weight' => 200,
+                        'weight' => 500,
                     ],
                 ],
                 'score_mode' => 'sum',

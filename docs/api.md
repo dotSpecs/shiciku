@@ -328,11 +328,15 @@
     {
       "id": 23,
       "name": "小学古诗",
+      "icon": "/static/images/tags/23.png",
+      "poem_count": 128,
       "zhuanti": { "alias": "xiaoxue", "name": "小学古诗" }
     },
     {
       "id": 20,
       "name": "送别",
+      "icon": "/static/images/tags/20.png",
+      "poem_count": 45,
       "zhuanti": null
     }
   ],
@@ -372,13 +376,15 @@
 | `recommend_authors[]` | array (10) | 从 `order < 999999` 的作者池随机 10 位 |
 | `recommend_authors[].pic` | string \| null | 头像 URL |
 | `featured_tags[]` | array (≤8) | 固定 8 个 tag（id 23/35/67/20/552/52/49/63），按该顺序返回；DB 中缺失的 id 跳过 |
+| `featured_tags[].icon` | string | tag 图标路径，格式为 `/static/images/tags/{id}.png` |
+| `featured_tags[].poem_count` | int | 该 tag 下的诗词数量；有专题时统计专题中的诗词数（`zhuanti_poems` 表），无专题时统计 tag 关联的诗词数（`poem_tag` 表） |
 | `featured_tags[].zhuanti` | object \| null | 该 tag 关联的专题。有专题：跳转 `/pages/zhuanti/detail?alias=…`；无专题：跳转诗词列表 `tag_id=…` |
 | `featured_tags[].zhuanti.alias` | string | 专题 slug |
 | `featured_books[]` | array (10) | 随机 10 本古籍 |
 | `featured_books[].author_name` | string \| null | 抓取接口返回的作者文本，`author` 为空时可作为展示回退 |
 | `featured_books[].chaodai` | string \| null | 抓取接口返回的朝代文本，`dynasty` 为空时可作为展示回退 |
 | `featured_books[].dynasty` | string \| null | 关联朝代名 |
-| `quotes[]` | array (3) | 随机 3 条 `guishu=1`（诗文出处）且有 `source_poem_id` 的名句 |
+| `quotes[]` | array (3) | 随机 3 条 `guishu=1`（诗文出处）且有 `source_poem_id` 的名句，仅从出处诗词关联 tag_id 为 23/35/67/447/263/262 的名句中筛选 |
 | `quotes[].author_name` | string \| null | 抓取接口返回的作者文本，`author` 为空时可作为展示回退 |
 | `quotes[].chaodai` | string \| null | 抓取接口返回的朝代文本 |
 
@@ -1259,7 +1265,7 @@ curl 'http://localhost/api/authors/dbzxvttxzu'
 
 - `match_phrase`（整句命中）走 `constant_score`，权重远高于 `match`（分词命中）
 - `match` 加 `minimum_should_match=75%` + `operator=and`，降低噪声
-- 指定 `orderField` 时叠加高斯衰减（`origin=0, scale=5000, decay=0.5, weight=200`），将 `order` 越小的越靠前作为 popularity 信号
+- 指定 `orderField` 时叠加高斯衰减（`origin=0, scale=5000, decay=0.5, weight=500`），将 `order` 越小的越靠前作为 popularity 信号
 - 指定 `authorBoost` 时追加 `term: { author.keyword: q }` 子句，搜作者名时同名作品集中靠前
 
 具体字段权重：
