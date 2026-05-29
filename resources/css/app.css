@@ -50,6 +50,10 @@ body {
     @apply inline-flex items-center justify-center my-1 gap-x-1.5 py-1 px-2.5 rounded-md text-sm font-medium border border-slate-300 text-slate-800 dark:border-slate-500 dark:text-white;
 }
 
+.search-highlight em {
+    @apply not-italic text-red-500 bg-red-50 dark:bg-red-950/40;
+}
+
 /* Pinyin Styles */
 .py-result-item {
     line-height: 2rem;

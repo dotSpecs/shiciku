@@ -33,7 +33,7 @@ class HomeController extends Controller
             'daily_poem' => $this->dailyPayload($request),
             'recommend_authors' => Cache::remember('home:authors', self::CACHE_TTL, fn () => $this->randomAuthors()),
             'featured_tags' => Cache::remember('home:tags', self::CACHE_TTL, fn () => $this->featuredTags()),
-            'featured_books' => Cache::remember('home:books', self::CACHE_TTL, fn () => $this->randomBooks()),
+            // 'featured_books' => Cache::remember('home:books', self::CACHE_TTL, fn () => $this->randomBooks()),
             'quotes' => Cache::remember('home:quotes', self::CACHE_TTL, fn () => $this->randomQuotes()),
         ]);
     }

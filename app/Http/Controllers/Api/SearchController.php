@@ -15,7 +15,9 @@ use Illuminate\Http\Request;
 class SearchController extends Controller
 {
     private const PER_PAGE = 15;
+
     private const MAX_PAGE = 50;
+
     private const Q_MAX_LEN = 64;
 
     private const TYPES = ['poem', 'mingju', 'author', 'article'];
@@ -26,7 +28,7 @@ class SearchController extends Controller
         $q = trim((string) $request->get('q', ''));
         $page = max(1, (int) $request->get('page', 1));
 
-        if (!in_array($type, self::TYPES, true)) {
+        if (! in_array($type, self::TYPES, true)) {
             return response()->json(['error' => 'invalid_type'], 400);
         }
         if ($q === '' || $page > self::MAX_PAGE) {
@@ -52,21 +54,30 @@ class SearchController extends Controller
         ], orderField: 'order', authorBoost: 150);
 
         $paginator = Poem::searchQuery($esQuery)
+            ->highlightRaw($this->poemHighlight())
             ->load(['author:id,author_id,name', 'dynasty:id,name'])
-            ->paginate(self::PER_PAGE, 'page', $page)
-            ->onlyModels();
+            ->paginate(self::PER_PAGE, 'page', $page);
 
         return response()->json([
             'type' => 'poem',
-            'data' => $paginator->getCollection()->map(fn (Poem $p) => [
-                'poem_id' => $p->poem_id,
-                'name' => $p->name,
-                'content' => $p->content,
-                'author_name' => $p->author_name,
-                'chaodai' => $p->chaodai,
-                'dynasty' => $p->dynasty ? ['id' => $p->dynasty->id, 'name' => $p->dynasty->name] : null,
-                'author' => $p->author ? ['author_id' => $p->author->author_id, 'name' => $p->author->name] : null,
-            ])->values()->all(),
+            'data' => $paginator->getCollection()->map(function ($hit) {
+                /** @var Poem|null $p */
+                $p = $hit->model();
+                if (! $p) {
+                    return null;
+                }
+
+                return [
+                    'poem_id' => $p->poem_id,
+                    'name' => $p->name,
+                    'content' => $p->content,
+                    'author_name' => $p->author_name,
+                    'chaodai' => $p->chaodai,
+                    'dynasty' => $p->dynasty ? ['id' => $p->dynasty->id, 'name' => $p->dynasty->name] : null,
+                    'author' => $p->author ? ['author_id' => $p->author->author_id, 'name' => $p->author->name] : null,
+                    'highlight' => $this->highlightPayload($hit),
+                ];
+            })->filter()->values()->all(),
             'current_page' => $paginator->currentPage(),
             'per_page' => $paginator->perPage(),
             'has_more' => $paginator->hasMorePages(),
@@ -83,30 +94,39 @@ class SearchController extends Controller
         ], orderField: 'book_order');
 
         $paginator = BookArticle::searchQuery($esQuery)
+            ->highlightRaw($this->articleHighlight())
             ->load(['book:id,book_id,name,author_id,author_name,dynasty_id,chaodai', 'book.author:id,author_id,name', 'book.dynasty:id,name'])
-            ->paginate(self::PER_PAGE, 'page', $page)
-            ->onlyModels();
+            ->paginate(self::PER_PAGE, 'page', $page);
 
         $books = $page === 1 ? $this->searchBooks($q) : [];
 
         return response()->json([
             'type' => 'article',
             'books' => $books,
-            'data' => $paginator->getCollection()->map(fn (BookArticle $a) => [
-                'article_id' => $a->article_id,
-                'name' => $a->name,
-                'book' => $a->book ? [
-                    'book_id' => $a->book->book_id,
-                    'name' => $a->book->name,
-                    'author_name' => $a->book->author_name,
-                    'chaodai' => $a->book->chaodai,
-                    'dynasty' => $a->book->dynasty?->name,
-                    'author' => $a->book->author ? [
-                        'author_id' => $a->book->author->author_id,
-                        'name' => $a->book->author->name,
+            'data' => $paginator->getCollection()->map(function ($hit) {
+                /** @var BookArticle|null $a */
+                $a = $hit->model();
+                if (! $a) {
+                    return null;
+                }
+
+                return [
+                    'article_id' => $a->article_id,
+                    'name' => $a->name,
+                    'book' => $a->book ? [
+                        'book_id' => $a->book->book_id,
+                        'name' => $a->book->name,
+                        'author_name' => $a->book->author_name,
+                        'chaodai' => $a->book->chaodai,
+                        'dynasty' => $a->book->dynasty?->name,
+                        'author' => $a->book->author ? [
+                            'author_id' => $a->book->author->author_id,
+                            'name' => $a->book->author->name,
+                        ] : null,
                     ] : null,
-                ] : null,
-            ])->values()->all(),
+                    'highlight' => $this->highlightPayload($hit),
+                ];
+            })->filter()->values()->all(),
             'current_page' => $paginator->currentPage(),
             'per_page' => $paginator->perPage(),
             'has_more' => $paginator->hasMorePages(),
@@ -116,7 +136,8 @@ class SearchController extends Controller
 
     private function searchBooks(string $q): array
     {
-        $like = '%' . $this->escapeLike($q) . '%';
+        $like = '%'.$this->escapeLike($q).'%';
+
         return Book::query()
             ->select('id', 'book_id', 'name', 'class', 'type', 'author_id', 'author_name', 'dynasty_id', 'chaodai')
             ->with(['author:id,author_id,name', 'dynasty:id,name'])
@@ -141,7 +162,7 @@ class SearchController extends Controller
 
     private function searchMingjus(string $q, int $page): JsonResponse
     {
-        $like = '%' . $this->escapeLike($q) . '%';
+        $like = '%'.$this->escapeLike($q).'%';
         $paginator = Mingju::query()
             ->select('id', 'mingju_id', 'name', 'source', 'guishu', 'author_id', 'author_name', 'chaodai')
             ->with('author:id,author_id,name')
@@ -168,7 +189,7 @@ class SearchController extends Controller
 
     private function searchAuthors(string $q, int $page): JsonResponse
     {
-        $like = '%' . $this->escapeLike($q) . '%';
+        $like = '%'.$this->escapeLike($q).'%';
         $paginator = Author::query()
             ->select('id', 'author_id', 'name', 'content', 'pic', 'shiwen_num', 'mingju_num', 'dynasty_id')
             ->with('dynasty:id,name')
@@ -198,6 +219,46 @@ class SearchController extends Controller
     private function escapeLike(string $q): string
     {
         return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $q);
+    }
+
+    private function highlightPayload($hit): array|object
+    {
+        $highlight = $hit->highlight()?->raw() ?? [];
+
+        return $highlight === [] ? (object) [] : $highlight;
+    }
+
+    private function poemHighlight(): array
+    {
+        return [
+            'pre_tags' => ['<em>'],
+            'post_tags' => ['</em>'],
+            'require_field_match' => false,
+            'fields' => [
+                'name' => ['number_of_fragments' => 0],
+                'content' => [
+                    'fragment_size' => 120,
+                    'number_of_fragments' => 2,
+                ],
+            ],
+        ];
+    }
+
+    private function articleHighlight(): array
+    {
+        return [
+            'pre_tags' => ['<em>'],
+            'post_tags' => ['</em>'],
+            'require_field_match' => false,
+            'fields' => [
+                'book_name' => ['number_of_fragments' => 0],
+                'article_name' => ['number_of_fragments' => 0],
+                'content' => [
+                    'fragment_size' => 160,
+                    'number_of_fragments' => 2,
+                ],
+            ],
+        ];
     }
 
     private function emptyPage(string $type, int $page): JsonResponse

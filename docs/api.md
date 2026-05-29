@@ -1210,7 +1210,11 @@ curl 'http://localhost/api/authors/dbzxvttxzu'
       "author_name": "陶渊明",
       "chaodai": "魏晋",
       "dynasty": { "id": 3, "name": "魏晋" },
-      "author": { "author_id": "taoyuanming", "name": "陶渊明" }
+      "author": { "author_id": "taoyuanming", "name": "陶渊明" },
+      "highlight": {
+        "name": ["桃花源记"],
+        "content": ["忽逢<em>桃花</em>林，夹岸数百步"]
+      }
     }
   ],
   "current_page": 1,
@@ -1254,16 +1258,43 @@ curl 'http://localhost/api/authors/dbzxvttxzu'
 
 **各 type 的 `data[]` 结构**
 
-- `type=poem` → 同 `/api/poems` 列表项（不含 `tags`）
-- `type=article` → `{article_id, name, book: {book_id, name, author_name, chaodai, dynasty, author: {author_id, name} | null} | null}`
+- `type=poem` → 同 `/api/poems` 列表项（不含 `tags`），额外包含 `highlight`
+- `type=article` → `{article_id, name, book: {book_id, name, author_name, chaodai, dynasty, author: {author_id, name} | null} | null, highlight}`
 - `type=mingju` → `{mingju_id, name, source, author_name, chaodai, author: {author_id, name} | null}`
 - `type=author` → 同 `/api/authors` 列表项（含 `content`/`pic`/`shiwen_num`/`mingju_num`/`dynasty`）
+
+**高亮字段**
+
+`highlight` 仅 ES 类型（`poem` / `article`）返回，类型为对象；没有命中的字段返回空对象 `{}`。高亮片段由 ES 生成，命中词使用 `<em>...</em>` 包裹，前端可只对该字段做受控 HTML 渲染，原始 `name` / `content` 不被覆盖。
+
+| type | highlight 字段 | 说明 |
+|---|---|---|
+| `poem` | `name` | 诗词标题，整字段返回（`number_of_fragments=0`） |
+| `poem` | `content` | 正文片段，最多 2 段，每段约 120 字符 |
+| `article` | `book_name` | 古籍书名，整字段返回 |
+| `article` | `article_name` | 篇章标题，整字段返回 |
+| `article` | `content` | 正文片段，最多 2 段，每段约 160 字符 |
+
+`type=article` 示例片段：
+
+```json
+{
+  "article_id": "xxx",
+  "name": "第一回",
+  "book": { "book_id": "hlm", "name": "红楼梦" },
+  "highlight": {
+    "book_name": ["<em>红楼</em>梦"],
+    "content": ["此开卷第一回也，作者自云..."]
+  }
+}
+```
 
 **评分策略（ES 类型）**
 
 统一由 `App\Services\Search\EsQueryBuilder::build()` 生成。Web 端 `Web/PoemController::search` 与 API 端 `Api/SearchController` 共用同一套公式：
 
 - `match_phrase`（整句命中）走 `constant_score`，权重远高于 `match`（分词命中）
+- 查询中有空格或标点分隔的多段短语时，会额外奖励同一字段内命中全部短语片段的结果；单个短语片段也按长度加权，长片段命中优先于零散短词命中
 - `match` 加 `minimum_should_match=75%` + `operator=and`，降低噪声
 - 指定 `orderField` 时叠加高斯衰减（`origin=0, scale=5000, decay=0.5, weight=500`），将 `order` 越小的越靠前作为 popularity 信号
 - 指定 `authorBoost` 时追加 `term: { author.keyword: q }` 子句，搜作者名时同名作品集中靠前

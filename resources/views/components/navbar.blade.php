@@ -33,7 +33,7 @@
                 </div>
                 <div class="flex flex-col gap-5 mt-5 sm:flex-row sm:items-center sm:mt-0 ">
                     <div class="relative flex rounded-lg shadow-sm w-full sm:w-auto">
-                        <input type="text" @if(request()->segment(2) == 'search') value="{{ request()->input('query') }}" @endif id="search-input" name="search-input" class="py-2 px-3 ps-11 block w-full border border-slate-200 shadow-sm rounded-s-lg text-sm focus:z-10 focus:border-slate-300 focus:outline-none disabled:opacity-50 disabled:pointer-events-none dark:bg-slate-800 dark:border-slate-600 dark:text-slate-400 dark:focus:border-slate-500" placeholder="搜索诗词、作者..." @keydown.enter="handleSearch">
+                        <input type="text" @if(request()->segment(2) == 'search') value="{{ request()->input('query') }}" @endif id="search-input" name="search-input" class="py-2 px-3 ps-11 block w-full border border-slate-200 shadow-sm rounded-s-lg text-sm focus:z-10 focus:border-slate-300 focus:outline-none disabled:opacity-50 disabled:pointer-events-none dark:bg-slate-800 dark:border-slate-600 dark:text-slate-400 dark:focus:border-slate-500" placeholder="搜索诗词、名句、作者、古籍..." @keydown.enter="handleSearch">
                         <div class="absolute inset-y-0 start-0 flex items-center pointer-events-none z-20 ps-4">
                             <svg class="shrink-0 size-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <circle cx="11" cy="11" r="8"></circle>
