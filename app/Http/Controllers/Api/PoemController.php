@@ -52,7 +52,7 @@ class PoemController extends Controller
 
         if ($tagId) {
             $query->select('poems.id', 'poems.poem_id', 'poems.name', 'poems.content', 'poems.author_id', 'poems.author_name', 'poems.dynasty_id', 'poems.chaodai')
-                ->whereHas('tags', fn ($q) => $q->where('tag_id', (int) $tagId))
+                ->whereHas('allTags', fn ($q) => $q->where('tag_id', (int) $tagId))
                 ->join('poem_tag', function ($join) use ($tagId) {
                     $join->on('poems.id', '=', 'poem_tag.poem_id')
                         ->where('poem_tag.tag_id', '=', (int) $tagId);

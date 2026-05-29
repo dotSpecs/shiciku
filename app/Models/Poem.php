@@ -52,7 +52,13 @@ class Poem extends Model
     public function tags(): BelongsToMany
     {
         return $this->belongsToMany(Tag::class, 'poem_tag', 'poem_id', 'tag_id')
-            ->select(['tags.id', 'tags.name']);
+            ->select(['tags.id', 'tags.name'])
+            ->wherePivot('show', 1);
+    }
+
+    public function allTags(): BelongsToMany
+    {
+        return $this->belongsToMany(Tag::class, 'poem_tag', 'poem_id', 'tag_id');
     }
 
     public function mingjus(): HasMany
