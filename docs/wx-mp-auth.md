@@ -86,17 +86,19 @@ Body:     { "code": "<wx.login code>" }
 2. `MiniProgramClient::code2Session($appid, $secret, $code)` → `{openid, session_key, unionid?}`
 3. `WxUser::firstOrNew(['appid'=>$appid, 'openid'=>$openid])`
 4. `user_id` 为空 → 看 unionid 是否能匹配已有 user，否则新建 user
-5. `SessionStore::issue($user, $appid, $sessionKey, $wxUserId)` → 64 位 hex token，写 Redis
+5. `SessionStore::issue($user, $appid, $sessionKey, $wxUserId)` → 64 位 hex token + 64 位 hex `sign_key`，写 Redis
 6. 返回：
 ```json
 {
   "token": "<64hex>",
-  "session_key": "<base64>",
+  "sign_key": "<64hex>",
   "expires_in": 7200
 }
 ```
 
-> `session_key` 必须下发到小程序端用作 HMAC 密钥，**不要走 URL/Query**，只在响应体里给一次。
+> 返回给小程序的 `sign_key` 是后端随机生成的 API 签名密钥，不是微信 `code2Session` 返回的原始 `session_key`。微信原始 `session_key` 只保存在服务端会话中，不下发给小程序。
+>
+> 不使用 `md5(wx_session_key)` 这类派生值。MD5 不是加密，且会把前端凭证和微信凭证明显绑定；API 签名密钥必须独立随机生成。
 
 ### 业务请求 Headers
 
@@ -106,7 +108,7 @@ Body:     { "code": "<wx.login code>" }
 | `Authorization` | `Bearer <token>` |
 | `X-WX-Timestamp` | 当前 Unix 时间戳（秒） |
 | `X-WX-Nonce` | 16 位随机串 |
-| `X-WX-Sign` | hex(HMAC-SHA256(session_key, canonical)) |
+| `X-WX-Sign` | hex(HMAC-SHA256(sign_key, canonical)) |
 
 ### 签名
 
@@ -126,7 +128,7 @@ Body:     { "code": "<wx.login code>" }
 
 ```php
 $canonical = implode("\n", [$pathWithQuery, $ts, $nonce]);
-$sign = hash_hmac('sha256', $canonical, $session_key);   // hex
+$sign = hash_hmac('sha256', $canonical, $sign_key);   // hex
 ```
 
 > 故意不签 METHOD/body：HTTPS 已防传输篡改，小程序端实现成本低。签 `path + query` 是防止"一个签名打任意端点/任意参数"。
@@ -144,7 +146,7 @@ $sign = hash_hmac('sha256', $canonical, $session_key);   // hex
 4. Redis SET wx:nonce:{token}:{nonce} NX EX 600 → 重复返 401 nonce_replay
 5. Redis GET wx:session:{token} → 不存在返 401 invalid_token
 6. session.appid 必须等于步骤 1 的 appid → 否则 401 app_mismatch
-7. 重算 HMAC（用 session.session_key）→ hash_equals 比对 → 错返 401 bad_signature
+7. 重算 HMAC（用服务端会话里保存的 sign_key）→ hash_equals 比对 → 错返 401 bad_signature
 8. 滑动续期：Redis EXPIRE wx:session:{token} 7200
 9. setUserResolver + attributes->set('wx_session', $session) → next
 ```
@@ -164,10 +166,10 @@ public function me(Request $request) {
 三层兜底，用户无感：
 
 1. **滑动续期**（步骤 8）：只要小程序在用，token TTL 一直被刷到 7200s，永不过期。
-2. **小程序端 401 拦截器**：封装 `wx.request`，遇到 `401 invalid_token` 或 `401 bad_signature` → 自动 `wx.login` → POST `/api/wx/login` → 拿新 token + session_key 存本地 → 重放原请求（最多一次防循环）。
+2. **小程序端 401 拦截器**：封装 `wx.request`，遇到 `401 invalid_token` 或 `401 bad_signature` → 自动 `wx.login` → POST `/api/wx/login` → 拿新 token + sign_key 存本地 → 重放原请求（最多一次防循环）。
 3. **Redis 持久化**：`redis.conf` 开 `appendonly yes`（AOF），重启基本不丢；极端丢了走机制 2。
 
-微信侧 session_key 自身也会过期（官方未承诺具体时长），验签失败同样触发机制 2，收敛到同一条重登链路。
+微信侧 session_key 自身也会过期（官方未承诺具体时长），后端再次登录时会刷新服务端保存的微信 session_key 和小程序端使用的 sign_key。
 
 ---
 
@@ -179,7 +181,7 @@ const KEY = 'shici_main'
 
 async function call(method, path, body) {
   let token = wx.getStorageSync('wx_token')
-  let sk = wx.getStorageSync('wx_sk')
+  let sk = wx.getStorageSync('wx_sign_key')
   if (!token) ({ token, sk } = await loginAndStore())
   const headers = signHeaders(path, token, sk)
   const res = await wx.request({ url: BASE + path, method, data: body, header: headers })
@@ -215,8 +217,8 @@ async function loginAndStore() {
     data: { code },
   })
   wx.setStorageSync('wx_token', data.token)
-  wx.setStorageSync('wx_sk', data.session_key)
-  return { token: data.token, sk: data.session_key }
+  wx.setStorageSync('wx_sign_key', data.sign_key)
+  return { token: data.token, sk: data.sign_key }
 }
 ```
 
@@ -241,11 +243,12 @@ php artisan migrate
 > $app = App\Models\App::create(['app_key'=>'test','appid'=>'wx_test','secret'=>'fake','name'=>'test']);
 > $u = User::create(['name'=>'mock']);
 > $w = App\Models\WxUser::create(['user_id'=>$u->id,'appid'=>$app->appid,'openid'=>'mock_openid']);
-> $r = app(App\Services\Wechat\SessionStore::class)->issue($u, $app->appid, 'sk_test_123', $w->id);
+> $r = app(App\Services\Wechat\SessionStore::class)->issue($u, $app->appid, 'wx_session_key_test_123', $w->id);
 > echo $r['token'];
+> echo $r['sign_key'];
 
 # 3. curl 验签 /api/wx/me
-TOKEN=...; SK=sk_test_123; KEY=test
+TOKEN=...; SK=...; KEY=test
 TS=$(date +%s); NONCE=$(openssl rand -hex 8)
 PATH_=/api/wx/me   # 若带 query，例：PATH_='/api/poems?tag_id=10&page=2'
 CANON=$(printf '%s\n%s\n%s' "$PATH_" "$TS" "$NONCE")

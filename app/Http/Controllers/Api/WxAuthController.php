@@ -25,7 +25,7 @@ class WxAuthController extends Controller
 
         $appKey = (string) $request->header('X-APPKEY', '');
         $app = MiniApp::where('app_key', $appKey)->where('enabled', true)->first();
-        if (!$app) {
+        if (! $app) {
             return response()->json(['error' => 'invalid_app'], 401);
         }
 
@@ -40,13 +40,13 @@ class WxAuthController extends Controller
                 ->where('openid', $session['openid'])
                 ->first();
 
-            if (!$wxUser) {
+            if (! $wxUser) {
                 $userId = null;
-                if (!empty($session['unionid'])) {
+                if (! empty($session['unionid'])) {
                     $sibling = WxUser::where('unionid', $session['unionid'])->first();
                     $userId = $sibling?->user_id;
                 }
-                if (!$userId) {
+                if (! $userId) {
                     $userId = User::create(['name' => null])->id;
                 }
                 $wxUser = WxUser::create([
@@ -55,7 +55,7 @@ class WxAuthController extends Controller
                     'openid' => $session['openid'],
                     'unionid' => $session['unionid'] ?? null,
                 ]);
-            } elseif (!empty($session['unionid']) && $wxUser->unionid !== $session['unionid']) {
+            } elseif (! empty($session['unionid']) && $wxUser->unionid !== $session['unionid']) {
                 $wxUser->unionid = $session['unionid'];
                 $wxUser->save();
             }
@@ -67,7 +67,7 @@ class WxAuthController extends Controller
 
         return response()->json([
             'token' => $issued['token'],
-            'session_key' => $session['session_key'],
+            'sign_key' => $issued['sign_key'],
             'expires_in' => $issued['expires_in'],
             ...$this->userPayload($user),
         ]);
@@ -76,6 +76,7 @@ class WxAuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         $user = $request->user();
+
         return response()->json([
             'id' => $user->id,
             'name' => $user->name,

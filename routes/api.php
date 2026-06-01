@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\HomeController;
 use App\Http\Controllers\Api\MingjuController;
 use App\Http\Controllers\Api\PoemController;
 use App\Http\Controllers\Api\SearchController;
+use App\Http\Controllers\Api\StudyProgressController;
 use App\Http\Controllers\Api\ToolController;
 use App\Http\Controllers\Api\WxAuthController;
 use App\Http\Controllers\Api\ZhuantiController;
@@ -41,6 +42,11 @@ Route::middleware('wx.sign')->group(function () {
         ->whereIn('type', ['poem', 'mingju', 'book', 'book_article']);
     Route::delete('/favorites/{type}/{id}', [FavoriteController::class, 'destroy'])
         ->whereIn('type', ['poem', 'mingju', 'book', 'book_article']);
+
+    Route::get('/study-progress/{alias}', [StudyProgressController::class, 'show']);
+    Route::get('/study-progress/{alias}/poems/{poem_id}', [StudyProgressController::class, 'status']);
+    Route::post('/study-progress/{alias}/poems/{poem_id}/read', [StudyProgressController::class, 'read']);
+    Route::put('/study-progress/{alias}/poems/{poem_id}', [StudyProgressController::class, 'update']);
 
     Route::get('/search', [SearchController::class, 'index']);
 });

@@ -205,6 +205,144 @@
 
 ---
 
+## 学习进度接口
+
+学习进度基于专题记录。状态绑定在“用户 + 专题 + 诗词”上，因此所有读写接口都需要专题 `alias`。
+
+诗词详情页只有在 URL 携带 `zhuanti_alias` 时展示学习状态和学习操作；从搜索、收藏、作者页、分享等普通入口进入时不带 `zhuanti_alias`，不调用学习进度接口。
+
+### 状态
+
+| 状态 | 含义 | 是否入库 |
+|---|---|---|
+| `todo` | 未学习 | 否，仅响应中返回 |
+| `started` | 已打开详情读过，但未标记已学 | 是 |
+| `learned` | 用户主动标记已学 | 是 |
+
+### `GET /api/study-progress/{alias}` — 获取专题学习进度
+
+用于学习进度页，也可用于专题页合并展示。
+
+**响应**
+
+```json
+{
+  "alias": "xiaoxue",
+  "name": "小学古诗",
+  "total": 75,
+  "learned_count": 12,
+  "started_count": 20,
+  "percent": 16,
+  "last_poem_id": "jingyesi",
+  "next_poem_id": "chunxiao",
+  "chapters": [
+    {
+      "id": 1,
+      "name": "一年级上册",
+      "sub_title": null,
+      "sort": 1,
+      "total": 8,
+      "learned_count": 3,
+      "poems": [
+        {
+          "poem_id": "jingyesi",
+          "name": "静夜思",
+          "author_name": "李白",
+          "chaodai": "唐代",
+          "dynasty": { "id": 6, "name": "唐代" },
+          "author": { "author_id": "libai", "name": "李白" },
+          "study": {
+            "status": "learned",
+            "read_count": 2,
+            "learned_at": "2026-05-29 12:00:00",
+            "last_read_at": "2026-05-29 12:00:00"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+`next_poem_id` 按专题章节顺序返回第一首未学诗词；全部已学时为 `null`。`last_poem_id` 是最近读过的诗词，仅用于“最近阅读”类入口。
+
+### `GET /api/study-progress/{alias}/poems/{poem_id}` — 获取单首学习状态
+
+仅用于“有 `zhuanti_alias` 但没有状态缓存”的兜底场景。从学习进度页或专题页进入详情时，应优先使用页面跳转时传入的 `study` 数据。
+
+**响应**
+
+```json
+{
+  "alias": "xiaoxue",
+  "poem_id": "jingyesi",
+  "status": "learned",
+  "read_count": 2,
+  "learned_at": "2026-05-29 12:00:00",
+  "last_read_at": "2026-05-29 12:00:00"
+}
+```
+
+### `POST /api/study-progress/{alias}/poems/{poem_id}/read` — 记录阅读
+
+用于带 `zhuanti_alias` 的诗词详情页打开后调用。该接口会创建或更新 `started` 记录，增加 `read_count`，更新 `last_read_at`，但不会计入已学。
+
+**响应**
+
+```json
+{
+  "alias": "xiaoxue",
+  "poem_id": "jingyesi",
+  "status": "started",
+  "read_count": 1,
+  "learned_at": null,
+  "last_read_at": "2026-05-29 12:00:00"
+}
+```
+
+### `PUT /api/study-progress/{alias}/poems/{poem_id}` — 更新学习状态
+
+**请求**
+
+```json
+{
+  "status": "learned"
+}
+```
+
+取消已学时传：
+
+```json
+{
+  "status": "started"
+}
+```
+
+取消已学会清空 `learned_at`，但保留 `read_count` 和 `last_read_at`。
+
+**响应**
+
+```json
+{
+  "alias": "xiaoxue",
+  "poem_id": "jingyesi",
+  "status": "learned",
+  "read_count": 2,
+  "learned_at": "2026-05-29 12:00:00",
+  "last_read_at": "2026-05-29 12:00:00"
+}
+```
+
+### 错误
+
+| 场景 | 状态码 | 响应 |
+|---|---|---|
+| 专题不存在 | 404 | `{"error":"zhuanti_not_found"}` |
+| 诗词不存在或不属于该专题 | 404 | `{"error":"study_target_not_found"}` |
+| `status` 非法 | 422 | Laravel validation errors |
+
+---
+
 ## 工具接口
 
 ### `POST /api/audio` — 生成诗词朗读音频
@@ -1133,13 +1271,15 @@ curl 'http://localhost/api/authors/dbzxvttxzu'
 ```json
 {
   "token": "64hex",
-  "session_key": "wx-session-key",
+  "sign_key": "64hex-api-sign-key",
   "expires_in": 7200,
   "id": 1,
   "name": "用户昵称",
   "avatar": "https://cdn.example.com/avatar.jpg"
 }
 ```
+
+`sign_key` 是后端随机生成的 API 签名密钥，用于后续 `X-WX-Sign`。微信 `code2Session` 返回的原始 `session_key` 不会返回给小程序。
 
 ### `PUT /api/wx/me` — 完善用户资料
 

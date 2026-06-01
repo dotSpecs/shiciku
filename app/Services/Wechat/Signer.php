@@ -2,8 +2,6 @@
 
 namespace App\Services\Wechat;
 
-use Illuminate\Support\Facades\Log;
-
 class Signer
 {
     public static function canonical(string $path, int $ts, string $nonce): string
@@ -18,13 +16,6 @@ class Signer
 
     public static function verify(string $path, int $ts, string $nonce, string $key, string $expected): bool
     {
-        Log::info('singer data', [
-                'path' => $path,
-                'ts' => $ts,
-                'nonce' => $nonce,
-                'key' => $key,
-                'expected' => $expected,
-        ]);
         return hash_equals(self::sign(self::canonical($path, $ts, $nonce), $key), $expected);
     }
 }

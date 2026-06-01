@@ -23,19 +23,19 @@ class VerifyWxSign
             return $this->reject('invalid_app');
         }
         $app = MiniApp::where('app_key', $appKey)->where('enabled', true)->first();
-        if (!$app) {
+        if (! $app) {
             return $this->reject('invalid_app');
         }
 
         $auth = (string) $request->header('Authorization', '');
-        if (!str_starts_with($auth, 'Bearer ')) {
+        if (! str_starts_with($auth, 'Bearer ')) {
             return $this->reject('missing_signature_headers');
         }
         $token = substr($auth, 7);
         $ts = (int) $request->header('X-WX-Timestamp', 0);
         $nonce = (string) $request->header('X-WX-Nonce', '');
         $sign = (string) $request->header('X-WX-Sign', '');
-        if ($token === '' || !$ts || $nonce === '' || $sign === '') {
+        if ($token === '' || ! $ts || $nonce === '' || $sign === '') {
             return $this->reject('missing_signature_headers');
         }
 
@@ -44,12 +44,12 @@ class VerifyWxSign
         }
 
         $nonceKey = "wx:nonce:{$token}:{$nonce}";
-        if (!Cache::add($nonceKey, 1, 600)) {
+        if (! Cache::add($nonceKey, 1, 600)) {
             return $this->reject('nonce_replay');
         }
 
         $session = $this->sessions->find($token);
-        if (!$session) {
+        if (! $session) {
             return $this->reject('invalid_token');
         }
 
@@ -58,7 +58,8 @@ class VerifyWxSign
         }
 
         $path = $request->getRequestUri();
-        if (!Signer::verify($path, $ts, $nonce, $session['session_key'], $sign)) {
+        $signKey = $session['sign_key'] ?? null;
+        if (! $signKey || ! Signer::verify($path, $ts, $nonce, $signKey, $sign)) {
             return $this->reject('bad_signature');
         }
 
