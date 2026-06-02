@@ -20,6 +20,7 @@ Route::middleware('wx.sign')->group(function () {
     Route::put('/wx/me', [WxAuthController::class, 'updateMe']);
 
     Route::get('/upload/token', [ToolController::class, 'uploadToken']);
+    Route::post('/qrcode', [ToolController::class, 'qrcode']);
     Route::post('/audio', [ToolController::class, 'audio']);
 
     Route::get('/home', [HomeController::class, 'index']);

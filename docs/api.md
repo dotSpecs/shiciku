@@ -205,6 +205,68 @@
 
 ---
 
+## 工具接口
+
+### `POST /api/qrcode` — 生成小程序码
+
+用于生成微信小程序码，扫码后先进入首页，再由首页根据 `scene` 做二次跳转。
+
+**鉴权**
+
+需要完整 `wx.sign` 鉴权。
+
+**请求头**
+
+| Header | 说明 |
+|---|---|
+| `X-APPKEY` | 小程序应用标识 |
+| `Authorization` | `Bearer <token>` |
+| `X-WX-Timestamp` | 时间戳 |
+| `X-WX-Nonce` | 随机串 |
+| `X-WX-Sign` | 签名 |
+
+**请求体**
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `page` | string | 是 | 小程序页面路径，例如 `pages/index/index` |
+| `scene` | string | 是 | 场景值，格式如 `poem*5yiwcmqkwe`、`ju*6dd50e9229`，最长 32 字符 |
+| `type` | string | 否 | `poem` / `ju`，用于基础校验 |
+| `is_hyaline` | boolean | 否 | 是否透明底，默认 `true` |
+| `check_path` | boolean | 否 | 是否检查页面路径，默认 `true` |
+
+**响应**
+
+返回图片二进制流，`Content-Type: image/jpeg`。
+
+**错误响应**
+
+```json
+{ "error": "invalid_scene" }
+```
+
+```json
+{ "error": "invalid_app" }
+```
+
+```json
+{ "error": "qrcode_failed", "message": "小程序码生成失败" }
+```
+
+**示例**
+
+```json
+{
+  "page": "pages/index/index",
+  "scene": "poem*5yiwcmqkwe",
+  "type": "poem"
+}
+```
+
+首页收到 `scene` 后自行解析并跳转到对应内容页。
+
+---
+
 ## 学习进度接口
 
 学习进度基于专题记录。状态绑定在“用户 + 专题 + 诗词”上，因此所有读写接口都需要专题 `alias`。

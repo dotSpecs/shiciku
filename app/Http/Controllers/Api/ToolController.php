@@ -3,15 +3,71 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\App as MiniApp;
 use App\Models\Poem;
 use App\Services\Utils\AudioService;
+use App\Services\Wechat\MiniProgramClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\Response;
 
 class ToolController extends Controller
 {
     private const UPLOAD_EXPIRES = 600;
     private const UPLOAD_HOST = 'https://up-z1.qiniup.com/';
+
+    public function __construct(private MiniProgramClient $wx)
+    {
+    }
+
+    public function qrcode(Request $request): Response|JsonResponse
+    {
+        $data = $request->validate([
+            'page' => ['required', 'string', 'max:128'],
+            'scene' => ['required', 'string', 'max:32'],
+            'type' => ['sometimes', 'string', 'in:poem,ju'],
+            'is_hyaline' => ['sometimes', 'boolean'],
+            'check_path' => ['sometimes', 'boolean'],
+        ]);
+
+        if (!preg_match('/^(poem|ju)\*[A-Za-z0-9_-]+$/', $data['scene'])) {
+            return response()->json(['error' => 'invalid_scene'], 400);
+        }
+
+        $app = MiniApp::where('app_key', (string) $request->header('X-APPKEY', ''))
+            ->where('enabled', true)
+            ->first();
+
+        if (!$app) {
+            return response()->json(['error' => 'invalid_app'], 401);
+        }
+
+        $params = [
+            'page' => $data['page'],
+            'scene' => $data['scene'],
+            'is_hyaline' => $data['is_hyaline'] ?? true,
+            'check_path' => $data['check_path'] ?? true,
+        ];
+
+        try {
+            $image = $this->wx->getWxaCode($app->appid, $app->secret, $params);
+        } catch (\Throwable $e) {
+            Log::warning('get wxa code failed', [
+                'appid' => $app->appid,
+                'page' => $data['page'],
+                'scene' => $data['scene'],
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json(['error' => 'qrcode_failed', 'message' => '小程序码生成失败'], 400);
+        }
+
+        return response($image, 200, [
+            'Content-Type' => 'image/jpeg',
+            'Cache-Control' => 'public, max-age=86400',
+        ]);
+    }
 
     public function audio(Request $request): JsonResponse
     {

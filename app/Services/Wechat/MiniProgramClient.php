@@ -2,12 +2,17 @@
 
 namespace App\Services\Wechat;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class MiniProgramClient
 {
     private const ENDPOINT = 'https://api.weixin.qq.com/sns/jscode2session';
+    private const ACCESS_TOKEN_ENDPOINT = 'https://api.weixin.qq.com/cgi-bin/token';
+    private const WXA_CODE_ENDPOINT = 'https://api.weixin.qq.com/wxa/getwxacodeunlimit';
+    private const ACCESS_TOKEN_TTL = 7000;
 
     /**
      * @return array{openid: string, session_key: string, unionid?: string}
@@ -37,5 +42,53 @@ class MiniProgramClient
             'session_key' => $data['session_key'],
             'unionid' => $data['unionid'] ?? null,
         ];
+    }
+
+    public function getWxaCode(string $appid, string $secret, array $params): string
+    {
+        $token = $this->getAccessToken($appid, $secret);
+
+        $res = Http::timeout(20)->post(self::WXA_CODE_ENDPOINT . '?access_token=' . urlencode($token), $params);
+
+        $contentType = strtolower($res->header('Content-Type', ''));
+        if (str_contains($contentType, 'json')) {
+            $data = $res->json();
+            $code = is_array($data) ? ($data['errcode'] ?? 'unknown') : 'unknown';
+            $msg = is_array($data) ? ($data['errmsg'] ?? 'invalid response') : 'invalid response';
+            throw new RuntimeException("getwxacodeunlimit failed code={$code} msg={$msg}");
+        }
+
+        if (! $res->successful()) {
+            throw new RuntimeException("getwxacodeunlimit http {$res->status()}");
+        }
+
+        return $res->body();
+    }
+
+    private function getAccessToken(string $appid, string $secret): string
+    {
+        $cacheKey = 'wx:access_token:' . $appid;
+
+        return Cache::remember($cacheKey, self::ACCESS_TOKEN_TTL, function () use ($appid, $secret) {
+            $res = Http::timeout(10)->get(self::ACCESS_TOKEN_ENDPOINT, [
+                'grant_type' => 'client_credential',
+                'appid' => $appid,
+                'secret' => $secret,
+            ]);
+
+            if (! $res->successful()) {
+                throw new RuntimeException("getAccessToken http {$res->status()}");
+            }
+
+            $data = $res->json();
+            if (! is_array($data) || empty($data['access_token'])) {
+                $code = $data['errcode'] ?? 'unknown';
+                $msg = $data['errmsg'] ?? 'invalid response';
+                Log::warning('get access token failed', ['appid' => $appid, 'code' => $code, 'msg' => $msg]);
+                throw new RuntimeException("getAccessToken failed code={$code} msg={$msg}");
+            }
+
+            return (string) $data['access_token'];
+        });
     }
 }
