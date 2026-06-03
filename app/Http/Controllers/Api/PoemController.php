@@ -83,7 +83,7 @@ class PoemController extends Controller
     public function show(Request $request, string $poem_id): JsonResponse
     {
         $poem = Poem::query()
-            ->select('id', 'poem_id', 'name', 'content', 'yzsy', 'langsong_url', 'author_id', 'author_name', 'dynasty_id', 'chaodai')
+            ->select('id', 'poem_id', 'name', 'content', 'yzsy', 'type', 'langsong_url', 'author_id', 'author_name', 'dynasty_id', 'chaodai')
             ->where('poem_id', $poem_id)
             ->with([
                 'author:id,author_id,name,pic',
@@ -155,6 +155,7 @@ class PoemController extends Controller
             'content' => $poem->content,
             'author_name' => $poem->author_name,
             'chaodai' => $poem->chaodai,
+            'type' => $poem->type,
             'supports' => [
                 'yin' => $poem->supportsYin(),
                 'yizhu' => $poem->supportsYizhu(),

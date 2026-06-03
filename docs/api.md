@@ -712,6 +712,7 @@ curl 'http://localhost/api/poems?type=词'
   "content": "<p>……</p>",
   "author_name": "陶渊明",
   "chaodai": "魏晋",
+  "type": "诗",
   "supports": { "yin": true, "yizhu": true },
   "audio": "https://audio.070022.xyz/poem/tb2yd7acup.mp3?ts=1748160000&sign=8e1c…",
   "dynasty": { "id": 3, "name": "魏晋" },
@@ -746,6 +747,7 @@ curl 'http://localhost/api/poems?type=词'
 | `content` | string (HTML) | 正文 |
 | `author_name` | string \| null | 抓取接口返回的作者文本，`author` 为空时可作为展示回退 |
 | `chaodai` | string \| null | 抓取接口返回的朝代文本，`dynasty` 为空时可作为展示回退 |
+| `type` | string \| null | 类型：诗、词、曲、文言文 |
 | `supports.yin` | bool | 是否有拼音版（由 `yzsy` 字段含「音」决定）。`true` 时可调 `/api/poems/{poem_id}/yinyi` 取拼音 |
 | `supports.yizhu` | bool | 是否有译注（由 `yzsy` 字段含「注」决定）。`true` 时可调 `/api/poems/{poem_id}/yinyi` 取译注 |
 | `audio` | string \| null | 朗读音频签名 URL（30 分钟有效，Cloudflare Worker 校验 `ts`/`sign`）；无朗读资源时为 `null` |
