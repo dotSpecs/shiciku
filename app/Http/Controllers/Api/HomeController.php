@@ -31,7 +31,7 @@ class HomeController extends Controller
     {
         return response()->json([
             'daily_poem' => $this->dailyPayload($request),
-            'recommend_authors' => Cache::remember('home:authors', self::CACHE_TTL, fn () => $this->randomAuthors()),
+            'recommend_authors' => Cache::remember('home:authors:v4', self::CACHE_TTL, fn () => $this->randomAuthors()),
             'featured_tags' => Cache::remember('home:tags', self::CACHE_TTL, fn () => $this->featuredTags()),
             // 'featured_books' => Cache::remember('home:books', self::CACHE_TTL, fn () => $this->randomBooks()),
             'quotes' => Cache::remember('home:quotes', self::CACHE_TTL, fn () => $this->randomQuotes()),
@@ -61,7 +61,7 @@ class HomeController extends Controller
     private function randomAuthors(): array
     {
         return Author::query()
-            ->select('id', 'author_id', 'name', 'pic', 'dynasty_id', 'order')
+            ->select('id', 'author_id', 'name', 'pic', 'pic_small', 'dynasty_id', 'order')
             ->where('order', '<=', 5010)
             ->where('pic', '!=', '')
             ->with('dynasty:id,name')

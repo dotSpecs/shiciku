@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Utils\SignedAudioUrl;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -18,13 +19,13 @@ class Author extends Model
 
     public function getPicAttribute($value): ?string
     {
-        return $value;
+        // return $value;
 
-        if ($value) {
-            return $value;
-        }
+        // if ($value) {
+        //     return $value;
+        // }
 
-        return $this->pic_small ? 'https://ziyuan.guwendao.net/' . $this->pic_small : '';
+        return $this->pic_small ? SignedAudioUrl::generate($this->pic_small) : '';
     }
 
     public function dynasty(): BelongsTo
