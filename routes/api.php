@@ -22,6 +22,7 @@ Route::middleware('wx.sign')->group(function () {
     Route::get('/upload/token', [ToolController::class, 'uploadToken']);
     Route::post('/qrcode', [ToolController::class, 'qrcode']);
     Route::post('/audio', [ToolController::class, 'audio']);
+    Route::get('/custom_pinyin', [ToolController::class, 'customPinyin']);
 
     Route::get('/home', [HomeController::class, 'index']);
     Route::get('/poems', [PoemController::class, 'index']);

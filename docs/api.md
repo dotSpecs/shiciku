@@ -407,6 +407,41 @@
 
 ## 工具接口
 
+### `GET /api/custom_pinyin` — 获取自定义拼音配置
+
+获取前端拼音转换器的自定义拼音映射表，用于处理特殊读音的字词。
+
+**请求**
+
+无需参数。
+
+**响应**
+
+```json
+{
+  "data": {
+    "将进酒": "qiāng jìn jiǔ",
+    "夕阳斜": "xī yáng xiá",
+    "万竿斜": "wàn gān xiá",
+    "春风拂槛": "chūn fēng fú jiàn",
+    "槛外": "jiàn wài",
+    "鬓毛衰": "bìn máo cuī",
+    "朝如青丝": "zhāo rú qīng sī",
+    "天姥": "tiān mǔ",
+    "泪不乾": "lèi bù gān",
+    "重叠": "chóng dié",
+    "曲项": "qū xiàng",
+    "长相": "cháng xiāng"
+  }
+}
+```
+
+**说明**
+
+- 配置集中管理在 `App\Helpers\CustomPinyin` 类中
+- 前端 `resources/js/pinyin.js` 在加载时自动调用此接口应用配置
+- 用于 `pinyin-pro` 库的 `customPinyin()` 方法
+
 ### `POST /api/audio` — 生成诗词朗读音频
 
 当诗词详情接口的 `audio` 字段为 `null` 时，可调用该接口临时生成朗读音频。

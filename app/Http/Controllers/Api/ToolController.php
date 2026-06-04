@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Helpers\CustomPinyin;
 use App\Http\Controllers\Controller;
 use App\Models\App as MiniApp;
 use App\Models\Poem;
@@ -117,6 +118,18 @@ class ToolController extends Controller
             'expires' => self::UPLOAD_EXPIRES,
             'host' => self::UPLOAD_HOST,
             'scope' => $scope,
+        ]);
+    }
+
+    /**
+     * 获取自定义拼音配置
+     *
+     * @return JsonResponse
+     */
+    public function customPinyin(): JsonResponse
+    {
+        return response()->json([
+            'data' => CustomPinyin::getMapping(),
         ]);
     }
 
