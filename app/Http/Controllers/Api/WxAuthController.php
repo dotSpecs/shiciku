@@ -11,6 +11,7 @@ use App\Services\Wechat\SessionStore;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class WxAuthController extends Controller
 {
@@ -98,6 +99,13 @@ class WxAuthController extends Controller
             'avatar' => ['sometimes', 'nullable', 'string', 'max:255'],
         ]);
 
+        if (array_key_exists('name', $data) && trim((string) $data['name']) !== '') {
+            $securityFailure = $this->checkNicknameSecurity($request, (string) $data['name']);
+            if ($securityFailure) {
+                return $securityFailure;
+            }
+        }
+
         $user = $request->user();
         $user->fill($data);
         $user->save();
@@ -112,5 +120,51 @@ class WxAuthController extends Controller
             'name' => $user->name,
             'avatar' => $user->avatar,
         ];
+    }
+
+    private function checkNicknameSecurity(Request $request, string $name): ?JsonResponse
+    {
+        $session = $request->attributes->get('wx_session');
+        $appid = is_array($session) ? (string) ($session['appid'] ?? '') : '';
+        $wxUserId = is_array($session) ? (int) ($session['wx_user_id'] ?? 0) : 0;
+
+        $app = MiniApp::query()
+            ->where('appid', $appid)
+            ->where('enabled', true)
+            ->first();
+        $wxUser = $wxUserId > 0 ? WxUser::query()->find($wxUserId) : null;
+
+        if (! $app || ! $wxUser) {
+            return response()->json(['error' => 'invalid_wx_session'], 401);
+        }
+
+        try {
+            $result = $this->wx->checkMessageSecurity(
+                $app->appid,
+                $app->secret,
+                $wxUser->openid,
+                $name,
+                MiniProgramClient::MSG_SEC_SCENE_PROFILE
+            );
+        } catch (\Throwable $e) {
+            Log::warning('nickname content security check failed', [
+                'appid' => $appid,
+                'wx_user_id' => $wxUserId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(['error' => 'content_security_check_failed'], 503);
+        }
+
+        if (! $result['pass']) {
+            return response()->json([
+                'error' => 'nickname_content_risky',
+                'suggest' => $result['suggest'],
+                'label' => $result['label'],
+                'trace_id' => $result['trace_id'],
+            ], 422);
+        }
+
+        return null;
     }
 }

@@ -1382,7 +1382,7 @@ curl 'http://localhost/api/authors/dbzxvttxzu'
 
 ### `PUT /api/wx/me` — 完善用户资料
 
-只接受 `name` 和 `avatar` 字段。两个字段都可选，只更新传入字段。
+只接受 `name` 和 `avatar` 字段。两个字段都可选，只更新传入字段。传入非空 `name` 时，后端会调用微信小程序 `msg_sec_check` 做文本内容安全校验；只有校验通过才会保存昵称。
 
 **请求**
 
@@ -1408,6 +1408,25 @@ curl 'http://localhost/api/authors/dbzxvttxzu'
 ```json
 {
   "error": "invalid_fields"
+}
+```
+
+昵称内容安全校验不通过返回 `422`：
+
+```json
+{
+  "error": "nickname_content_risky",
+  "suggest": "risky",
+  "label": 100,
+  "trace_id": "微信返回的 trace_id"
+}
+```
+
+微信内容安全接口暂时不可用返回 `503`：
+
+```json
+{
+  "error": "content_security_check_failed"
 }
 ```
 
