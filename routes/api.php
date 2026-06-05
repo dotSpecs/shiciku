@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthorController;
 use App\Http\Controllers\Api\BookController;
+use App\Http\Controllers\Api\DictationController;
 use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\HomeController;
 use App\Http\Controllers\Api\MingjuController;
@@ -49,6 +50,12 @@ Route::middleware('wx.sign')->group(function () {
     Route::get('/study-progress/{alias}/poems/{poem_id}', [StudyProgressController::class, 'status']);
     Route::post('/study-progress/{alias}/poems/{poem_id}/read', [StudyProgressController::class, 'read']);
     Route::put('/study-progress/{alias}/poems/{poem_id}', [StudyProgressController::class, 'update']);
+
+    Route::get('/dictation/challenge', [DictationController::class, 'challenge']);
+    Route::post('/dictation/challenge/submit', [DictationController::class, 'submit']);
+    Route::get('/dictation/wrongs', [DictationController::class, 'wrongs']);
+    Route::post('/dictation/wrongs/{id}/review', [DictationController::class, 'reviewWrong']);
+    Route::get('/dictation/stats', [DictationController::class, 'stats']);
 
     Route::get('/search', [SearchController::class, 'index']);
 });
