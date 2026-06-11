@@ -99,6 +99,11 @@ class WxAuthController extends Controller
             'avatar' => ['sometimes', 'nullable', 'string', 'max:255'],
         ]);
 
+        Log::info('test nick', [
+            'exist' => array_key_exists('name', $data),
+            'name' => trim((string) $data['name']) !== ''
+        ]);
+
         if (array_key_exists('name', $data) && trim((string) $data['name']) !== '') {
             $securityFailure = $this->checkNicknameSecurity($request, (string) $data['name']);
             if ($securityFailure) {
@@ -146,6 +151,7 @@ class WxAuthController extends Controller
                 $name,
                 MiniProgramClient::MSG_SEC_SCENE_PROFILE
             );
+            Log::info('check security result', ['result' => $result]);
         } catch (\Throwable $e) {
             Log::warning('nickname content security check failed', [
                 'appid' => $appid,
