@@ -996,13 +996,13 @@ const startedAt = ref(Date.now())
 第一版跳转：
 
 ```text
-/pages/poem/detail?poem_id=xxx
+/sub-pages/poem/detail?poem_id=xxx
 ```
 
 后续如需展示学习路径状态，再使用：
 
 ```text
-/pages/poem/detail?poem_id=xxx&zhuanti_alias=xiaoxue
+/sub-pages/poem/detail?poem_id=xxx&zhuanti_alias=xiaoxue
 ```
 
 ## 与错题复习的关系
