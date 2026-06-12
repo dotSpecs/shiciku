@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\App as MiniApp;
 use App\Models\User;
 use App\Models\WxUser;
+use App\Services\Wechat\MiniAppRegistry;
 use App\Services\Wechat\MiniProgramClient;
 use App\Services\Wechat\SessionStore;
 use Illuminate\Http\JsonResponse;
@@ -18,6 +18,7 @@ class WxAuthController extends Controller
     public function __construct(
         private MiniProgramClient $wx,
         private SessionStore $sessions,
+        private MiniAppRegistry $apps,
     ) {}
 
     public function login(Request $request): JsonResponse
@@ -25,7 +26,7 @@ class WxAuthController extends Controller
         $data = $request->validate(['code' => 'required|string']);
 
         $appKey = (string) $request->header('X-APPKEY', '');
-        $app = MiniApp::where('app_key', $appKey)->where('enabled', true)->first();
+        $app = $this->apps->findEnabledByAppKey($appKey);
         if (! $app) {
             return response()->json(['error' => 'invalid_app'], 401);
         }
@@ -133,10 +134,7 @@ class WxAuthController extends Controller
         $appid = is_array($session) ? (string) ($session['appid'] ?? '') : '';
         $wxUserId = is_array($session) ? (int) ($session['wx_user_id'] ?? 0) : 0;
 
-        $app = MiniApp::query()
-            ->where('appid', $appid)
-            ->where('enabled', true)
-            ->first();
+        $app = $this->apps->findEnabledByAppid($appid);
         $wxUser = $wxUserId > 0 ? WxUser::query()->find($wxUserId) : null;
 
         if (! $app || ! $wxUser) {

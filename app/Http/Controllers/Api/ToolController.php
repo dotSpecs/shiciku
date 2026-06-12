@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Helpers\CustomPinyin;
 use App\Http\Controllers\Controller;
-use App\Models\App as MiniApp;
 use App\Models\Poem;
 use App\Services\Utils\AudioService;
+use App\Services\Wechat\MiniAppRegistry;
 use App\Services\Wechat\MiniProgramClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,9 +18,10 @@ class ToolController extends Controller
     private const UPLOAD_EXPIRES = 600;
     private const UPLOAD_HOST = 'https://up-z1.qiniup.com/';
 
-    public function __construct(private MiniProgramClient $wx)
-    {
-    }
+    public function __construct(
+        private MiniProgramClient $wx,
+        private MiniAppRegistry $apps,
+    ) {}
 
     public function qrcode(Request $request): Response|JsonResponse
     {
@@ -36,9 +37,7 @@ class ToolController extends Controller
             return response()->json(['error' => 'invalid_scene'], 400);
         }
 
-        $app = MiniApp::where('app_key', (string) $request->header('X-APPKEY', ''))
-            ->where('enabled', true)
-            ->first();
+        $app = $this->apps->findEnabledByAppKey((string) $request->header('X-APPKEY', ''));
 
         if (!$app) {
             return response()->json(['error' => 'invalid_app'], 401);

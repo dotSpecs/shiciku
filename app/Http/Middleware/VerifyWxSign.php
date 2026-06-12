@@ -2,8 +2,8 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\App as MiniApp;
 use App\Models\User;
+use App\Services\Wechat\MiniAppRegistry;
 use App\Services\Wechat\SessionStore;
 use App\Services\Wechat\Signer;
 use Closure;
@@ -14,7 +14,10 @@ use Symfony\Component\HttpFoundation\Response;
 
 class VerifyWxSign
 {
-    public function __construct(private SessionStore $sessions) {}
+    public function __construct(
+        private SessionStore $sessions,
+        private MiniAppRegistry $apps,
+    ) {}
 
     public function handle(Request $request, Closure $next): Response
     {
@@ -22,7 +25,7 @@ class VerifyWxSign
         if ($appKey === '') {
             return $this->reject('invalid_app');
         }
-        $app = MiniApp::where('app_key', $appKey)->where('enabled', true)->first();
+        $app = $this->apps->findEnabledByAppKey($appKey);
         if (! $app) {
             return $this->reject('invalid_app');
         }
