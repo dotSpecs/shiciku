@@ -14,8 +14,6 @@ class Attempt extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'chapter_ids' => 'array',
-        'started_at' => 'datetime',
         'submitted_at' => 'datetime',
     ];
 

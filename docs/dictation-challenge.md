@@ -1,15 +1,15 @@
-# 默写闯关功能方案
+# 诗词闯关功能方案
 
 ## 背景
 
 当前项目已经具备诗词、专题、学习进度、收藏、浏览历史、朗读、拼音、译注、分享卡等能力。小程序端的学习路径已经实现，用户可以按小学、初中、高中查看古诗词学习进度，并在诗词详情页记录读过和标为已学。
 
-默写闯关适合作为学习路径之后的练习能力：用户学完内容后，可以通过补空、上下句、全诗默写等方式巩固记忆。第一版目标不是做复杂题库，而是基于现有专题和诗词正文动态生成题目，先完成可用闭环。
+诗词闯关适合作为学习路径之后的练习能力：用户学完内容后，可以通过补空、上下句、作者识别、注释理解等方式巩固记忆。第一版目标不是做复杂题库，而是基于现有专题和诗词正文、作者、注释等数据动态生成题目，先完成可用闭环。
 
 ## 目标
 
 - 支持用户按年级册选择练习范围，例如一年级上册、三年级下册。
-- 支持补空题、上下句题两种基础题型。
+- 支持多种题型：补空题、上下句题、作者选择题、注释理解题、诗句出处题、诗句排序题。
 - 支持每关固定题量、实时作答、结果统计。
 - 支持错题记录和错题复习。
 - 支持后续扩展听写、全诗默写、每日挑战、学习报告。
@@ -25,11 +25,11 @@
 - 不做手工题库后台。
 - 不做全文语音识别跟读。
 
-这些能力可以在默写闭环稳定后逐步增加。
+这些能力可以在诗词闯关闭环稳定后逐步增加。
 
 ## 使用入口
 
-小程序端已有 `发现页` 的“默写闯关”入口，第一版直接复用该入口。
+小程序端已有 `发现页` 的”诗词闯关”入口，第一版直接复用该入口。
 
 建议新增页面：
 
@@ -48,9 +48,9 @@ uni.navigateTo({ url: '/sub-pages/dictation/index' })
 
 ## 年级册题库范围
 
-默写闯关的练习范围改为按 `zhuanti_chapters.name` 精确选择年级册，不再只按小学、初中、高中粗粒度选择。
+诗词闯关的练习范围改为按 `zhuanti_chapters.name` 精确选择年级册，不再只按小学、初中、高中粗粒度选择。
 
-默写闯关只出古诗词相关题目。可参与题库的专题固定为以下 3 个：
+诗词闯关只出古诗词相关题目。可参与题库的专题固定为以下 3 个：
 
 | id | name | alias |
 |---|---|---|
@@ -94,11 +94,11 @@ uni.navigateTo({ url: '/sub-pages/dictation/index' })
 
 也就是说，同一个年级册可能包含同一个古诗专题下的多个 chapter，例如正文篇目和“日积月累”。这些 chapter 都应作为同一个年级册题库。
 
-其他专题不参与默写闯关题库。
+其他专题不参与诗词闯关题库。
 
 ## 题型设计
 
-### 补空题
+### 1. 补空题 (blank)
 
 从一句诗文中随机挖掉若干字，不要求连续。
 
@@ -124,7 +124,7 @@ uni.navigateTo({ url: '/sub-pages/dictation/index' })
   - 15 字以上：挖 4 到 6 字。
 - 同一关内避免同一句重复出题。
 
-### 上下句题
+### 2. 上下句题 (next/previous)
 
 从相邻句子生成题目。优先在同一个句号、问号、叹号或分号之前的句组里配对。
 
@@ -146,17 +146,144 @@ uni.navigateTo({ url: '/sub-pages/dictation/index' })
 
 第一版建议上下句各占一半，或者统一由后端随机。
 
+### 3. 作者选择题 (author_choice)
+
+给出诗词名或诗句，从多个作者中选择正确答案。
+
+示例：
+
+```text
+题目：《静夜思》的作者是？
+选项：
+  A. 杜甫
+  B. 李白  ✓
+  C. 白居易
+  D. 王维
+```
+
+或：
+
+```text
+题目：下列哪首诗是李白的作品？
+选项：
+  A. 春晓
+  B. 静夜思  ✓
+  C. 登鹳雀楼
+  D. 咏鹅
+```
+
+第一版建议规则：
+
+- 使用 `poems.author` 字段作为标准答案。
+- 干扰项从同年级册或相近朝代的其他诗人中选择，增加难度。
+- 可以给出诗名让用户选作者，也可以给出作者让用户选诗名。
+- 选项固定 4 个：1 个正确答案 + 3 个干扰项。
+- 干扰项需避免重复，且不能包含正确答案。
+- 干扰项优先从题库范围内（当前年级册）的其他诗词作者中选择。
+
+### 4. 注释理解题 (annotation_meaning)
+
+从诗词的注释中提取字词释义，生成选择题。
+
+示例：
+
+```text
+原文：疑是地上霜
+注释：疑：怀疑，以为。
+题目：诗句"疑是地上霜"中"疑"的意思是？
+选项：
+  A. 怀疑，以为  ✓
+  B. 疑问
+  C. 惊讶
+  D. 猜测
+```
+
+第一版建议规则：
+
+- 从 `poems.yizhu_content` 字段中提取注释。
+- 解析格式：`字词：释义` 或 `字词，释义`。
+- 优先选择诗句中的关键字词，避免生僻字或过于简单的字（如"的"、"了"等）。
+- 只有当注释清晰、格式规范时才生成此类题目。
+- **干扰项通过 AI 生成**，提供语义相近但错误的释义。
+- AI Prompt 示例：
+  ```
+  请为以下字词生成3个错误但看起来合理的释义选项，用于古诗词学习的选择题。
+
+  字词：{word}
+  正确释义：{correct_meaning}
+  诗句：{sentence}
+
+  要求：
+  1. 生成3个干扰项，每个都是错误的释义
+  2. 干扰项应该是该字词在其他语境下可能的含义
+  3. 难度适中，不要过于离谱
+  4. 以JSON数组格式返回：["干扰项1", "干扰项2", "干扰项3"]
+  ```
+
+### 5. 诗句出处题 (poem_source)
+
+给出一句诗，选择它来自哪首诗。
+
+示例：
+
+```text
+题目："床前明月光"出自哪首诗？
+选项：
+  A. 望庐山瀑布
+  B. 静夜思  ✓
+  C. 早发白帝城
+  D. 赠汪伦
+```
+
+第一版建议规则：
+
+- 题干使用诗中的名句或特征句。
+- 干扰项从同一作者或同年级册的其他诗词中选择。
+- 避免使用过于明显的名句（如诗词标题本身）。
+- 确保干扰项的诗词在题库范围内，用户有学习过的可能。
+
+### 6. 诗句排序题 (sentence_order)
+
+打乱诗句顺序，让用户选择正确的顺序。
+
+示例：
+
+```text
+题目：将下列诗句按正确顺序排列
+A. 疑是地上霜
+B. 床前明月光
+C. 低头思故乡
+D. 举头望明月
+
+选项：
+  A. B-A-D-C  ✓
+  B. B-D-A-C
+  C. A-B-D-C
+  D. B-C-A-D
+```
+
+第一版建议规则：
+
+- 选择 4 句连续的诗句进行打乱。
+- 生成 4 个排列选项，其中 1 个为正确答案。
+- 干扰项的排列应该有一定合理性（如首句不变，只调整中间句子），增加难度。
+- 避免过于简单的诗词（如只有 4 句的绝句）。
+- 优先选择律诗或较长的古诗。
+
 ### 混合题
 
-`mode=mixed` 时同时生成补空题和上下句题。
+`mode=mixed` 时同时生成多种题型。
 
-建议默认：
+建议默认（每关 10 题）：
 
-- 每关 10 题。
-- 补空题 5 题。
-- 上下句题 5 题。
+- 补空题：2 题
+- 上下句题：2 题  
+- 作者选择题：2 题
+- 注释理解题：1 题
+- 诗句出处题：2 题
+- 诗句排序题：1 题
 
-如果可用句子不足，则自动降级为实际可生成题量。
+如果某类题型可生成题量不足，则自动调整其他题型比例，确保总题量达标。
 
 ## 题目生成
 
@@ -305,13 +432,14 @@ ORDER BY zhuanti_poems.order, poems.order, poems.id;
 
 低年级诗词数量可能少于默认题量。例如一年级上册当前只有 7 首，一年级下册当前只有 9 首。如果用户请求 10 题，不能简单按“每首诗只出一道题”处理。
 
-组题规则建议：
+组题规则：
 
 - `limit` 表示题目数量，不是诗词数量。
 - 同一首诗可以出多道不同题，例如一道上下句题、一到两道补空题。
 - 同一句五字诗句也可以生成多个不同挖空位置，例如 `_眠_觉晓`、`春_不_晓`、`春眠__晓`。
 - 同一关内避免完全重复的题：`poem_id + question_type + prompt + answer_key` 相同视为重复。
-- 优先让更多诗词出现一次，再从已入选诗词中补充第二道、第三道题。
+- 获取闯关题目时优先让更多诗词出现一次，再从已入选诗词中补充第二道、第三道题。
+- 同一首诗词需要补充多题时，优先选择尚未出现过的题型；只有题量仍不足时，才使用同一题型下其他不重复题目。
 - 后端应随机打乱候选诗词、同诗题目池和最终题序，避免每次挑战都是相同题目顺序。
 - 同一首诗连续出现多题时，前端可正常展示；后端随机排序即可，不需要做强制间隔。
 - 如果整个年级册生成的题目池仍少于 `limit`，则返回实际可生成题量。
@@ -444,6 +572,7 @@ CREATE TABLE dictation_attempt_items (
   prompt TEXT NOT NULL,
   answer TEXT NOT NULL,
   accepted_answers TEXT NULL,
+  options JSON NULL COMMENT '选择题选项数组',
   user_answer TEXT NULL,
   is_correct TINYINT(1) NOT NULL DEFAULT 0,
   sort INT UNSIGNED NOT NULL DEFAULT 0,
@@ -463,10 +592,11 @@ CREATE TABLE dictation_attempt_items (
 | `poem_id` | 题目来源诗词 |
 | `zhuanti_id` | 题目来源专题 |
 | `chapter_id` | 题目来源 chapter |
-| `question_type` | `blank` / `next` / `previous` |
+| `question_type` | `blank` / `next` / `previous` / `author_choice` / `annotation_meaning` / `poem_source` / `sentence_order` |
 | `prompt` | 展示给用户的题干 |
 | `answer` | 标准答案 |
-| `accepted_answers` | 可接受答案集合，包含异文答案 |
+| `accepted_answers` | 可接受答案集合，包含异文答案（填空题和上下句题用） |
+| `options` | 选择题选项数组（选择题用），JSON 格式，例如 `["选项A", "选项B", "选项C", "选项D"]` |
 | `user_answer` | 用户答案 |
 | `is_correct` | 是否正确 |
 | `sort` | 题目顺序 |
@@ -594,38 +724,41 @@ Query 参数：
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
 | `grade_name` | string | 是 | 年级册名称，对应 `zhuanti_chapters.name` |
-| `mode` | string | 否 | `blank` / `next` / `previous` / `mixed`，默认 `mixed` |
+| `mode` | string | 否 | `blank` / `next` / `previous` / `author_choice` / `annotation_meaning` / `poem_source` / `sentence_order` / `mixed`，默认 `mixed` |
 | `limit` | int | 否 | 题目数量，默认 10，最大 20 |
 
 响应：
 
 ```json
 {
-  "challenge_id": "tmp-20260605-abc123",
+  "challenge_id": "dc_P1m3c7a9Kxv2r8ZtQn4Ls6Bw",
+  "challenge_token": "encrypted-token",
   "grade_name": "一年级下册",
   "mode": "mixed",
   "total": 10,
   "ttl_seconds": 1800,
   "questions": [
     {
-      "question_id": "q1",
+      "question_id": 123,
       "type": "blank",
       "poem_id": "jingyesi",
       "poem_name": "静夜思",
       "author_name": "李白",
       "chaodai": "唐代",
       "prompt": "疑是__霜",
-      "answer_hint": "2个字"
+      "answer_hint": "2个字",
+      "instance_token": "encrypted-instance-token"
     },
     {
-      "question_id": "q2",
+      "question_id": 124,
       "type": "next",
       "poem_id": "jingyesi",
       "poem_name": "静夜思",
       "author_name": "李白",
       "chaodai": "唐代",
       "prompt": "床前明月光",
-      "direction": "填写下一句"
+      "direction": "填写下一句",
+      "instance_token": "encrypted-instance-token"
     }
   ]
 }
@@ -634,19 +767,13 @@ Query 参数：
 注意：
 
 - 第一版响应不返回标准答案，避免前端直接暴露答案。
-- `ttl_seconds` 对应后端 challenge 缓存有效期；前端应提示用户在有效期内完成并提交。
-- 第一版响应不返回 `topic`、`chapter`、`chapter_ids`。这些来源信息由后端保存在 challenge 缓存中，并在提交时写入 `dictation_attempt_items`。
+- `ttl_seconds` 用于前端倒计时提示；服务端不按 token 内过期时间拒绝提交。
+- 第一版响应不返回 `topic`、`chapter`、`chapter_ids`。这些来源信息保存在题库记录中，并在提交时写入 `dictation_attempt_items`。
+- 前端提交时必须原样带回每题的 `question_id` 和 `instance_token`。
 - 前端答题页只需要展示诗词基础信息、题干和题型提示。
 - 如果后续结果页确实需要带学习路径上下文跳转诗词详情，可以单独返回一个轻量字段 `zhuanti_alias`，不需要返回完整 `topic/chapter` 对象。
 
-后端需要在临时缓存中保存题目答案、可接受答案和来源信息，或者在提交时根据 `question_id` 重新解析。推荐使用缓存。
-
-缓存建议：
-
-```text
-dictation:challenge:{user_id}:{challenge_id}
-TTL: 30 分钟
-```
+后端通过题库记录和加密 token 保存本次题目顺序与实例化状态，提交时不信任前端答案。
 
 ### 提交闯关结果
 
@@ -658,16 +785,18 @@ POST /api/dictation/challenge/submit
 
 ```json
 {
-  "challenge_id": "tmp-20260605-abc123",
+  "challenge_token": "encrypted-token",
   "duration_seconds": 126,
   "answers": [
     {
-      "question_id": "q1",
-      "user_answer": "地上"
+      "question_id": 123,
+      "user_answer": "地上",
+      "instance_token": "encrypted-instance-token"
     },
     {
-      "question_id": "q2",
-      "user_answer": "疑是地上霜"
+      "question_id": 124,
+      "user_answer": "疑是地上霜",
+      "instance_token": "encrypted-instance-token"
     }
   ]
 }
@@ -824,9 +953,6 @@ GET /api/dictation/stats
   "today_attempts": 2,
   "today_correct_count": 16,
   "today_total": 20,
-  "total_attempts": 18,
-  "total_correct_count": 142,
-  "total_questions": 180,
   "active_wrong_count": 12
 }
 ```
@@ -850,6 +976,9 @@ GET /api/dictation/stats
 - `App\Services\Dictation\GradeScopeResolver`
 - `App\Services\Dictation\PoemTextParser`
 - `App\Services\Dictation\QuestionGenerator`
+- `App\Services\Dictation\ChoiceQuestionGenerator`
+- `App\Services\Dictation\AnnotationParser`
+- `App\Services\Dictation\DeepSeekAIService`
 - `App\Services\Dictation\AnswerNormalizer`
 - `App\Services\Dictation\ChallengeService`
 
@@ -859,7 +988,10 @@ GET /api/dictation/stats
 |---|---|
 | `GradeScopeResolver` | 根据 `grade_name` 解析古诗 chapter 集合、专题集合和候选诗词 |
 | `PoemTextParser` | 清洗 HTML、提取并移除异文标注、切句 |
-| `QuestionGenerator` | 根据句子生成题目，并为题目生成 `accepted_answers` |
+| `QuestionGenerator` | 生成填空题和上下句题 |
+| `ChoiceQuestionGenerator` | 生成作者、诗句出处、排序等选择题，包括干扰项生成 |
+| `AnnotationParser` | 从 `yizhu_content` 中提取注释，解析"字词：释义"格式 |
+| `DeepSeekAIService` | 封装 DeepSeek API 请求，用于生成注释理解题干扰项 |
 | `AnswerNormalizer` | 标准化答案并和 `accepted_answers` 比较 |
 | `ChallengeService` | 生成 challenge、提交评分、写入 attempt 和错题 |
 
@@ -969,12 +1101,12 @@ const startedAt = ref(Date.now())
 
 ## 与学习进度的关系
 
-默写闯关不直接改变 `user_study_progress.status`。
+诗词闯关不直接改变 `user_study_progress.status`。
 
 原因：
 
 - 学习路径里的 `learned` 是用户主动标记。
-- 默写正确不一定代表用户已完成整首学习。
+- 闯关答题正确不一定代表用户已完成整首学习。
 - 避免练习状态和学习状态互相覆盖。
 - 年级册题库只覆盖古诗专题，但小学、初中、高中分别对应不同 `zhuanti.alias`。
 
@@ -1032,11 +1164,11 @@ const startedAt = ref(Date.now())
 ## 安全与防作弊
 
 - `GET /challenge` 不返回标准答案。
-- 标准答案和 `accepted_answers` 存在服务端缓存中。
-- `challenge_id` 绑定 `user_id`。
-- challenge 缓存设置 30 分钟过期。
-- 提交时只接受当前用户自己的 challenge。
-- 提交后删除缓存或标记已提交，避免重复提交。
+- 标准答案和 `accepted_answers` 保存在服务端题库记录中，不由前端提交。
+- `challenge_token` 绑定 `user_id`、`grade_name`、`mode` 和本次题目 id 顺序。
+- `ttl_seconds` 返回 1800 秒，用于前端倒计时提示。
+- `instance_token` 保存实例化后的选项顺序、补空位置或排序答案，提交时只接受可解密且匹配题目的实例 token。
+- 当前实现不阻止重复提交；重复提交会生成新的 attempt 记录。
 
 ## 边界情况
 
@@ -1047,8 +1179,8 @@ const startedAt = ref(Date.now())
 | 诗词数量少于 `limit` | 允许同一首诗生成多道不同题 |
 | 题目池仍少于 `limit` | 返回实际生成数量 |
 | 完全无法生成题目 | 返回 `200`，`questions=[]`，小程序提示“当前内容暂不能生成题目” |
-| challenge 过期 | 返回 `400 {"error":"challenge_expired"}` |
-| 重复提交 | 返回 `400 {"error":"challenge_submitted"}` |
+| challenge 过期或 token 非法 | 返回 `400 {"error":"invalid_question_instance"}` |
+| 题目实例 token 非法 | 返回 `400 {"error":"invalid_question_instance"}` |
 | 用户未填写答案 | 允许提交，按错误处理 |
 
 ## 分阶段实现
@@ -1167,8 +1299,14 @@ const startedAt = ref(Date.now())
 - `mixed` 混合模式。
 - 补空题。
 - 下一句题。
+- 作者选择题。
 - 每关 10 题。
 - 结果页。
 - 错题保存。
 
-错题本页面可以作为第二阶段补上。这样第一版范围可控，也能最快验证用户是否愿意使用默写练习。
+第二版可增加：
+- 注释理解题（需要 AI 生成干扰项）。
+- 诗句出处题。
+- 诗句排序题。
+
+错题本页面可以作为第二阶段补上。这样第一版范围可控，也能最快验证用户是否愿意使用诗词闯关练习。

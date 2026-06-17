@@ -37,22 +37,23 @@ class DictationController extends Controller
     public function submit(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'challenge_id' => ['required', 'string', 'max:64'],
+            'challenge_token' => ['required', 'string'],
             'duration_seconds' => ['nullable', 'integer', 'min:0', 'max:86400'],
             'answers' => ['nullable', 'array'],
-            'answers.*.question_id' => ['required_with:answers', 'string'],
+            'answers.*.question_id' => ['required_with:answers', 'integer'],
             'answers.*.user_answer' => ['nullable', 'string'],
+            'answers.*.instance_token' => ['nullable', 'string'],
         ]);
 
         $payload = $this->dictation->submit(
             $request->user(),
-            $data['challenge_id'],
+            $data['challenge_token'],
             (int) ($data['duration_seconds'] ?? 0),
             $data['answers'] ?? [],
         );
 
         if (! $payload) {
-            return response()->json(['error' => 'challenge_expired'], 400);
+            return response()->json(['error' => 'invalid_question_instance'], 400);
         }
 
         return response()->json($payload);

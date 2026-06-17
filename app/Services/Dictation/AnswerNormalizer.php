@@ -6,17 +6,27 @@ class AnswerNormalizer
 {
     public function normalize(?string $value): string
     {
-        $text = html_entity_decode((string) $value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        $text = strip_tags($text);
+        $text = $this->plainText($value);
 
         if (function_exists('mb_convert_kana')) {
             $text = mb_convert_kana($text, 'asKV', 'UTF-8');
         }
 
         $text = mb_strtolower($text, 'UTF-8');
-        $text = preg_replace('/[\s\p{P}\p{S}]+/u', '', $text) ?? '';
+        $text = preg_replace('/[\s\p{Z}\p{P}\p{S}\x{200B}\x{FEFF}]+/u', '', $text) ?? '';
 
         return $text;
+    }
+
+    public function withoutWhitespace(?string $value): string
+    {
+        $text = $this->plainText($value);
+
+        if (function_exists('mb_convert_kana')) {
+            $text = mb_convert_kana($text, 's', 'UTF-8');
+        }
+
+        return preg_replace('/[\s\p{Z}\x{200B}\x{FEFF}]+/u', '', $text) ?? '';
     }
 
     /**
@@ -57,5 +67,12 @@ class AnswerNormalizer
         sort($values, SORT_STRING);
 
         return md5(implode('|', $values));
+    }
+
+    private function plainText(?string $value): string
+    {
+        $text = html_entity_decode((string) $value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        return strip_tags($text);
     }
 }

@@ -18,6 +18,8 @@ class WrongItem extends Model
 
     protected $casts = [
         'accepted_answers' => UnicodeJson::class,
+        'options' => UnicodeJson::class,
+        'instance_metadata' => UnicodeJson::class,
         'last_wrong_at' => 'datetime',
         'last_reviewed_at' => 'datetime',
         'resolved_at' => 'datetime',
@@ -36,6 +38,11 @@ class WrongItem extends Model
     public function lastAttemptItem(): BelongsTo
     {
         return $this->belongsTo(AttemptItem::class, 'last_attempt_item_id', 'id');
+    }
+
+    public function question(): BelongsTo
+    {
+        return $this->belongsTo(Question::class, 'question_id', 'id');
     }
 
     public function poem(): BelongsTo

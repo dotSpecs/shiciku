@@ -4,10 +4,11 @@ namespace App\Services\Dictation;
 
 use App\Models\Dictation\Attempt;
 use App\Models\Dictation\AttemptItem;
+use App\Models\Dictation\Question;
 use App\Models\Dictation\WrongItem;
 use App\Models\User;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -17,121 +18,304 @@ class ChallengeService
         QuestionGenerator::TYPE_BLANK,
         QuestionGenerator::TYPE_NEXT,
         QuestionGenerator::TYPE_PREVIOUS,
+        QuestionGenerator::TYPE_AUTHOR_CHOICE,
+        QuestionGenerator::TYPE_ANNOTATION_MEANING,
+        QuestionGenerator::TYPE_POEM_SOURCE,
+        QuestionGenerator::TYPE_SENTENCE_ORDER,
         QuestionGenerator::MODE_MIXED,
     ];
 
-    private const CACHE_TTL_SECONDS = 1800;
+    private const TOKEN_TTL_SECONDS = 1800;
 
     private const PER_PAGE_WRONGS = 20;
 
     private const MAX_PAGE = 50;
 
     public function __construct(
-        private GradeScopeResolver $scopeResolver,
-        private QuestionGenerator $questionGenerator,
+        private QuestionInstantiator $instantiator,
         private AnswerNormalizer $normalizer,
+        private DictationTokenCodec $tokenCodec,
     ) {}
 
     public function challenge(User $user, string $gradeName, string $mode, int $limit): ?array
     {
-        $scope = $this->scopeResolver->resolve($gradeName);
-        if (! $scope) {
+        $gradeName = trim($gradeName);
+        if ($gradeName === '') {
             return null;
         }
 
-        $questions = $this->questionGenerator->generate($scope['candidates'], $mode, $limit);
+        $types = $this->typesForMode($mode);
+        $questions = Question::query()
+            ->active()
+            ->where('grade_name', $gradeName)
+            ->whereIn('question_type', $types)
+            ->with(['poem:id,poem_id,name,author_id,author_name,dynasty_id,chaodai', 'poem.author:id,author_id,name', 'poem.dynasty:id,name'])
+            ->get();
+        if ($questions->isEmpty()) {
+            return null;
+        }
+
+        $selectedQuestions = $this->selectBalancedQuestions(
+            $questions,
+            $limit,
+            $mode === QuestionGenerator::MODE_MIXED ? $types : []
+        );
+
+        $instances = $selectedQuestions
+            ->map(fn (Question $question) => $this->instantiator->instantiate($question))
+            ->values()
+            ->all();
+
         $challengeId = 'dc_'.Str::random(24);
-        $startedAt = now();
-
-        $payload = [
-            'challenge_id' => $challengeId,
-            'user_id' => $user->id,
-            'grade_name' => $scope['grade_name'],
-            'chapter_ids' => $scope['chapter_ids'],
-            'mode' => $mode,
-            'started_at' => $startedAt->toDateTimeString(),
-            'questions' => $questions,
-        ];
-
-        Cache::put($this->cacheKey($user, $challengeId), $payload, self::CACHE_TTL_SECONDS);
 
         return [
             'challenge_id' => $challengeId,
-            'grade_name' => $scope['grade_name'],
+            'challenge_token' => $this->challengeToken($user, $gradeName, $mode, $selectedQuestions->pluck('id')->all()),
+            'grade_name' => $gradeName,
             'mode' => $mode,
-            'total' => count($questions),
-            'ttl_seconds' => self::CACHE_TTL_SECONDS,
-            'questions' => array_map(fn (array $question) => $this->publicQuestion($question), $questions),
+            'total' => count($instances),
+            'ttl_seconds' => self::TOKEN_TTL_SECONDS,
+            'questions' => array_map(fn (array $question) => $this->publicQuestion($question), $instances),
         ];
     }
 
     /**
-     * @param  array<int, array{question_id: string, user_answer?: string|null}>  $answers
+     * @param  EloquentCollection<int, Question>  $questions
+     * @param  array<int, string>  $targetTypes
+     * @return Collection<int, Question>
      */
-    public function submit(User $user, string $challengeId, int $durationSeconds, array $answers): ?array
+    private function selectBalancedQuestions(EloquentCollection $questions, int $limit, array $targetTypes = []): Collection
     {
-        $payload = Cache::pull($this->cacheKey($user, $challengeId));
-        if (! is_array($payload)) {
+        if ($limit <= 0 || $questions->isEmpty()) {
+            return collect();
+        }
+
+        $byPoem = $questions
+            ->shuffle()
+            ->groupBy('poem_id')
+            ->map(fn (Collection $poemQuestions) => $poemQuestions->shuffle());
+
+        $selected = collect();
+        $selectedIds = [];
+        $usedTypesByPoem = [];
+
+        foreach ($this->typeCoverageOrder($questions, $targetTypes) as $type) {
+            if ($selected->count() >= $limit) {
+                return $selected->shuffle()->values();
+            }
+
+            $typeQuestions = $questions
+                ->where('question_type', $type)
+                ->shuffle()
+                ->values();
+            $question = $typeQuestions->first(fn (Question $candidate) => ! isset($selectedIds[$candidate->id])
+                && ! isset($usedTypesByPoem[$candidate->poem_id]))
+                ?: $typeQuestions->first(fn (Question $candidate) => ! isset($selectedIds[$candidate->id]));
+
+            if ($question) {
+                $this->pushSelectedQuestion($selected, $selectedIds, $usedTypesByPoem, $question);
+                if ($selected->count() >= $limit) {
+                    return $selected->shuffle()->values();
+                }
+            }
+        }
+
+        foreach ($byPoem->shuffle() as $poemQuestions) {
+            $poemId = $poemQuestions->first()?->poem_id;
+            if (isset($usedTypesByPoem[$poemId])) {
+                continue;
+            }
+
+            $question = $poemQuestions->first();
+            if (! $question) {
+                continue;
+            }
+
+            $this->pushSelectedQuestion($selected, $selectedIds, $usedTypesByPoem, $question);
+
+            if ($selected->count() >= $limit) {
+                return $selected->shuffle()->values();
+            }
+        }
+
+        while ($selected->count() < $limit) {
+            $progress = false;
+
+            foreach ($byPoem->shuffle() as $poemQuestions) {
+                $poemId = $poemQuestions->first()?->poem_id;
+                $question = $poemQuestions
+                    ->reject(fn (Question $candidate) => isset($selectedIds[$candidate->id]))
+                    ->first(fn (Question $candidate) => ! in_array(
+                        $candidate->question_type,
+                        $usedTypesByPoem[$poemId] ?? [],
+                        true
+                    ));
+
+                if (! $question) {
+                    continue;
+                }
+
+                $this->pushSelectedQuestion($selected, $selectedIds, $usedTypesByPoem, $question);
+                $progress = true;
+
+                if ($selected->count() >= $limit) {
+                    return $selected->shuffle()->values();
+                }
+            }
+
+            if (! $progress) {
+                break;
+            }
+        }
+
+        while ($selected->count() < $limit) {
+            $progress = false;
+
+            foreach ($byPoem->shuffle() as $poemQuestions) {
+                $question = $poemQuestions
+                    ->reject(fn (Question $candidate) => isset($selectedIds[$candidate->id]))
+                    ->first();
+
+                if (! $question) {
+                    continue;
+                }
+
+                $this->pushSelectedQuestion($selected, $selectedIds, $usedTypesByPoem, $question);
+                $progress = true;
+
+                if ($selected->count() >= $limit) {
+                    return $selected->shuffle()->values();
+                }
+            }
+
+            if (! $progress) {
+                break;
+            }
+        }
+
+        return $selected->shuffle()->values();
+    }
+
+    /**
+     * @param  Collection<int, Question>  $selected
+     * @param  array<int, true>  $selectedIds
+     * @param  array<int|string, array<int, string>>  $usedTypesByPoem
+     */
+    private function pushSelectedQuestion(Collection $selected, array &$selectedIds, array &$usedTypesByPoem, Question $question): void
+    {
+        $selected->push($question);
+        $selectedIds[$question->id] = true;
+        $usedTypesByPoem[$question->poem_id] ??= [];
+        $usedTypesByPoem[$question->poem_id][] = $question->question_type;
+    }
+
+    /**
+     * @param  EloquentCollection<int, Question>  $questions
+     * @param  array<int, string>  $targetTypes
+     * @return array<int, string>
+     */
+    private function typeCoverageOrder(EloquentCollection $questions, array $targetTypes): array
+    {
+        if ($targetTypes === []) {
+            return [];
+        }
+
+        $counts = $questions
+            ->groupBy('question_type')
+            ->map(fn (Collection $items) => $items->count())
+            ->all();
+
+        $types = array_values(array_filter(
+            array_unique($targetTypes),
+            fn (string $type) => isset($counts[$type])
+        ));
+
+        usort($types, fn (string $left, string $right) => ($counts[$left] <=> $counts[$right]) ?: strcmp($left, $right));
+
+        return $types;
+    }
+
+    /**
+     * @param  array<int, array{question_id: int|string, user_answer?: string|null, instance_token?: string|null}>  $answers
+     */
+    public function submit(User $user, string $challengeToken, int $durationSeconds, array $answers): ?array
+    {
+        $challenge = $this->parseChallengeToken($user, $challengeToken);
+        if ($challenge === null) {
             return null;
         }
 
         $answerMap = [];
         foreach ($answers as $answer) {
             if (isset($answer['question_id'])) {
-                $answerMap[(string) $answer['question_id']] = (string) ($answer['user_answer'] ?? '');
+                $answerMap[(int) $answer['question_id']] = [
+                    'user_answer' => (string) ($answer['user_answer'] ?? ''),
+                    'instance_token' => $answer['instance_token'] ?? null,
+                ];
             }
         }
 
         $items = [];
         $correctCount = 0;
+        $questionIds = array_map('intval', $challenge['question_ids']);
+        $questions = Question::query()
+            ->whereIn('id', $questionIds)
+            ->with(['poem:id,poem_id,name,author_id,author_name,dynasty_id,chaodai', 'poem.author:id,author_id,name', 'poem.dynasty:id,name'])
+            ->get()
+            ->keyBy('id');
 
-        foreach ($payload['questions'] as $question) {
-            $userAnswer = $answerMap[$question['question_id']] ?? '';
-            $acceptedAnswers = $question['accepted_answers'] ?: [$question['answer']];
-            $isCorrect = $this->normalizer->isCorrect($userAnswer, $acceptedAnswers);
+        foreach ($questionIds as $questionId) {
+            $question = $questions->get($questionId);
+            if (! $question) {
+                return null;
+            }
+
+            $answerPayload = $answerMap[$questionId] ?? ['user_answer' => '', 'instance_token' => null];
+            $userAnswer = $this->submittedUserAnswer($question, $answerPayload['user_answer']);
+            $evaluation = $this->instantiator->evaluate(
+                $question,
+                $userAnswer,
+                is_string($answerPayload['instance_token']) ? $answerPayload['instance_token'] : null
+            );
+            if ($evaluation === null) {
+                return null;
+            }
+
+            $isCorrect = $evaluation['is_correct'];
             if ($isCorrect) {
                 $correctCount++;
             }
 
             $items[] = [
-                ...$question,
+                ...$evaluation['instance'],
+                'question_model' => $question,
                 'user_answer' => $userAnswer,
                 'is_correct' => $isCorrect,
             ];
         }
 
-        $attempt = DB::transaction(function () use ($user, $payload, $durationSeconds, $correctCount, $items) {
+        $attempt = DB::transaction(function () use ($user, $challenge, $durationSeconds, $correctCount, $items) {
             $attempt = Attempt::query()->create([
                 'user_id' => $user->id,
-                'scope_type' => 'grade',
-                'grade_name' => $payload['grade_name'],
-                'chapter_ids' => $payload['chapter_ids'],
-                'mode' => $payload['mode'],
+                'grade_name' => $challenge['grade_name'],
+                'mode' => $challenge['mode'],
                 'total' => count($items),
                 'correct_count' => $correctCount,
                 'duration_seconds' => max(0, $durationSeconds),
-                'started_at' => Carbon::parse($payload['started_at']),
                 'submitted_at' => now(),
             ]);
 
             foreach ($items as $index => $item) {
                 $attemptItem = AttemptItem::query()->create([
                     'attempt_id' => $attempt->id,
-                    'user_id' => $user->id,
-                    'poem_id' => $item['poem_pk'],
-                    'zhuanti_id' => $item['zhuanti_id'],
-                    'chapter_id' => $item['chapter_id'],
-                    'question_type' => $item['type'],
-                    'prompt' => $item['prompt'],
-                    'answer' => $item['answer'],
-                    'accepted_answers' => $item['accepted_answers'],
+                    'question_id' => $item['question_id'],
                     'user_answer' => $item['user_answer'],
                     'is_correct' => $item['is_correct'],
                     'sort' => $index + 1,
                 ]);
 
                 if (! $item['is_correct']) {
-                    $this->recordWrong($user, $payload['grade_name'], $item, $attemptItem);
+                    $this->recordWrong($user, $item, $attemptItem);
                 }
             }
 
@@ -200,6 +384,9 @@ class ChallengeService
             return null;
         }
 
+        $userAnswer = $wrong->question_type === QuestionGenerator::TYPE_BLANK
+            ? $this->normalizer->withoutWhitespace($userAnswer)
+            : $userAnswer;
         $acceptedAnswers = $wrong->accepted_answers ?: [$wrong->answer];
         $isCorrect = $this->normalizer->isCorrect($userAnswer, $acceptedAnswers);
         $now = now();
@@ -236,30 +423,42 @@ class ChallengeService
 
     public function stats(User $user, ?string $gradeName): array
     {
-        $attempts = Attempt::query()->where('user_id', $user->id);
-        $wrongs = WrongItem::query()->where('user_id', $user->id)->whereNull('resolved_at');
+        $todayStart = now()->startOfDay();
+        $tomorrowStart = $todayStart->copy()->addDay();
+
+        $todayAttempts = Attempt::query()
+            ->where('user_id', $user->id)
+            ->where('created_at', '>=', $todayStart)
+            ->where('created_at', '<', $tomorrowStart);
 
         if ($gradeName) {
-            $attempts->where('grade_name', $gradeName);
-            $wrongs->where('grade_name', $gradeName);
+            $todayAttempts->where('grade_name', $gradeName);
         }
 
-        $todayAttempts = (clone $attempts)->whereDate('created_at', now()->toDateString());
+        $activeWrongs = WrongItem::query()
+            ->where('user_id', $user->id)
+            ->whereNull('resolved_at');
+
+        if ($gradeName) {
+            $activeWrongs->where('grade_name', $gradeName);
+        }
+
+        $activeWrongCount = $activeWrongs->count();
+
+        $stats = $todayAttempts
+            ->selectRaw(
+                'COUNT(*) AS today_attempts,
+                COALESCE(SUM(correct_count), 0) AS today_correct_count,
+                COALESCE(SUM(total), 0) AS today_total'
+            )
+            ->first();
 
         return [
-            'today_attempts' => (clone $todayAttempts)->count(),
-            'today_correct_count' => (int) (clone $todayAttempts)->sum('correct_count'),
-            'today_total' => (int) (clone $todayAttempts)->sum('total'),
-            'total_attempts' => (clone $attempts)->count(),
-            'total_correct_count' => (int) (clone $attempts)->sum('correct_count'),
-            'total_questions' => (int) (clone $attempts)->sum('total'),
-            'active_wrong_count' => $wrongs->count(),
+            'today_attempts' => (int) $stats->today_attempts,
+            'today_correct_count' => (int) $stats->today_correct_count,
+            'today_total' => (int) $stats->today_total,
+            'active_wrong_count' => $activeWrongCount,
         ];
-    }
-
-    private function cacheKey(User $user, string $challengeId): string
-    {
-        return "dictation:challenge:{$user->id}:{$challengeId}";
     }
 
     /**
@@ -278,6 +477,8 @@ class ChallengeService
             'prompt' => $question['prompt'],
             'answer_hint' => $question['answer_hint'] ?? null,
             'direction' => $question['direction'] ?? null,
+            'options' => $question['options'] ?? null, // 选择题选项
+            'instance_token' => $question['instance_token'] ?? null,
         ], fn ($value) => $value !== null);
     }
 
@@ -295,6 +496,7 @@ class ChallengeService
             'prompt' => $item['prompt'],
             'answer' => $item['answer'],
             'accepted_answers' => $item['accepted_answers'],
+            'options' => $item['options'] ?? null, // 选择题选项
             'user_answer' => $item['user_answer'],
             'is_correct' => $item['is_correct'],
         ];
@@ -303,14 +505,11 @@ class ChallengeService
     /**
      * @param  array<string, mixed>  $item
      */
-    private function recordWrong(User $user, string $gradeName, array $item, AttemptItem $attemptItem): void
+    private function recordWrong(User $user, array $item, AttemptItem $attemptItem): void
     {
         $attributes = [
             'user_id' => $user->id,
-            'grade_name' => $gradeName,
-            'poem_id' => $item['poem_pk'],
-            'question_type' => $item['type'],
-            'answer_key' => $item['answer_key'],
+            'question_id' => $item['question_id'],
         ];
 
         $wrong = WrongItem::query()
@@ -319,18 +518,25 @@ class ChallengeService
             ->first();
 
         $now = now();
+        $values = [
+            'poem_id' => $item['poem_pk'],
+            'grade_name' => $item['grade_name'],
+            'zhuanti_id' => $item['zhuanti_id'],
+            'chapter_id' => $item['chapter_id'],
+            'question_type' => $item['type'],
+            'prompt' => $item['prompt'],
+            'answer' => $item['answer'],
+            'accepted_answers' => $item['accepted_answers'],
+            'options' => $item['options'] ?? null,
+            'last_user_answer' => $item['user_answer'],
+            'instance_metadata' => $item['instance_metadata'] ?? [],
+            'last_attempt_item_id' => $attemptItem->id,
+            'last_wrong_at' => $now,
+            'resolved_at' => null,
+        ];
+
         if ($wrong) {
-            $wrong->forceFill([
-                'zhuanti_id' => $item['zhuanti_id'],
-                'chapter_id' => $item['chapter_id'],
-                'prompt' => $item['prompt'],
-                'answer' => $item['answer'],
-                'accepted_answers' => $item['accepted_answers'],
-                'last_user_answer' => $item['user_answer'],
-                'last_attempt_item_id' => $attemptItem->id,
-                'last_wrong_at' => $now,
-                'resolved_at' => null,
-            ])->save();
+            $wrong->forceFill($values)->save();
             $wrong->increment('wrong_count');
 
             return;
@@ -339,16 +545,9 @@ class ChallengeService
         WrongItem::query()->create([
             ...$attributes,
             'first_attempt_item_id' => $attemptItem->id,
-            'last_attempt_item_id' => $attemptItem->id,
-            'zhuanti_id' => $item['zhuanti_id'],
-            'chapter_id' => $item['chapter_id'],
-            'prompt' => $item['prompt'],
-            'answer' => $item['answer'],
-            'accepted_answers' => $item['accepted_answers'],
-            'last_user_answer' => $item['user_answer'],
+            ...$values,
             'wrong_count' => 1,
             'reviewed_count' => 0,
-            'last_wrong_at' => $now,
         ]);
     }
 
@@ -362,8 +561,8 @@ class ChallengeService
             'poem_name' => $poem?->name,
             'author_name' => $poem?->author?->name ?: $poem?->author_name,
             'chaodai' => $poem?->dynasty?->name ?: $poem?->chaodai,
+            'question_id' => $wrong->question_id,
             'question_type' => $wrong->question_type,
-            'answer_key' => $wrong->answer_key,
             'prompt' => $wrong->prompt,
             'last_user_answer' => $wrong->last_user_answer,
             'wrong_count' => $wrong->wrong_count,
@@ -372,6 +571,74 @@ class ChallengeService
             'last_attempt_item_id' => $wrong->last_attempt_item_id,
             'last_wrong_at' => $wrong->last_wrong_at?->toDateTimeString(),
             'resolved_at' => $wrong->resolved_at?->toDateTimeString(),
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function typesForMode(string $mode): array
+    {
+        return match ($mode) {
+            QuestionGenerator::TYPE_BLANK => [QuestionGenerator::TYPE_BLANK],
+            QuestionGenerator::TYPE_NEXT => [QuestionGenerator::TYPE_NEXT],
+            QuestionGenerator::TYPE_PREVIOUS => [QuestionGenerator::TYPE_PREVIOUS],
+            QuestionGenerator::TYPE_AUTHOR_CHOICE => [QuestionGenerator::TYPE_AUTHOR_CHOICE],
+            QuestionGenerator::TYPE_ANNOTATION_MEANING => [QuestionGenerator::TYPE_ANNOTATION_MEANING],
+            QuestionGenerator::TYPE_POEM_SOURCE => [QuestionGenerator::TYPE_POEM_SOURCE],
+            QuestionGenerator::TYPE_SENTENCE_ORDER => [QuestionGenerator::TYPE_SENTENCE_ORDER],
+            default => [
+                QuestionGenerator::TYPE_BLANK,
+                QuestionGenerator::TYPE_NEXT,
+                QuestionGenerator::TYPE_PREVIOUS,
+                QuestionGenerator::TYPE_AUTHOR_CHOICE,
+                // QuestionGenerator::TYPE_ANNOTATION_MEANING,
+                QuestionGenerator::TYPE_POEM_SOURCE,
+                QuestionGenerator::TYPE_SENTENCE_ORDER,
+            ],
+        };
+    }
+
+    private function submittedUserAnswer(Question $question, string $userAnswer): string
+    {
+        if ($question->question_type !== QuestionGenerator::TYPE_BLANK) {
+            return $userAnswer;
+        }
+
+        return $this->normalizer->withoutWhitespace($userAnswer);
+    }
+
+    /**
+     * @param  array<int, int>  $questionIds
+     */
+    private function challengeToken(User $user, string $gradeName, string $mode, array $questionIds): string
+    {
+        return $this->tokenCodec->encode([
+            'uid' => $user->id,
+            'grade_name' => $gradeName,
+            'mode' => $mode,
+            'question_ids' => array_values(array_map('intval', $questionIds)),
+        ]);
+    }
+
+    /**
+     * @return array{grade_name: string, mode: string, question_ids: array<int, int>}|null
+     */
+    private function parseChallengeToken(User $user, string $token): ?array
+    {
+        $payload = $this->tokenCodec->decode($token);
+        if ($payload === null || ($payload['uid'] ?? null) !== $user->id) {
+            return null;
+        }
+
+        if (! is_string($payload['grade_name'] ?? null) || ! is_string($payload['mode'] ?? null) || ! is_array($payload['question_ids'] ?? null)) {
+            return null;
+        }
+
+        return [
+            'grade_name' => $payload['grade_name'],
+            'mode' => $payload['mode'],
+            'question_ids' => array_values(array_map('intval', $payload['question_ids'])),
         ];
     }
 }

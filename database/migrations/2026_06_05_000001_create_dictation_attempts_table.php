@@ -10,15 +10,12 @@ return new class extends Migration
     {
         Schema::create('dictation_attempts', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('user_id')->index();
-            $table->string('scope_type', 32)->default('grade');
+            $table->unsignedBigInteger('user_id');
             $table->string('grade_name', 64);
-            $table->json('chapter_ids')->nullable();
             $table->string('mode', 32)->default('mixed');
             $table->unsignedInteger('total')->default(0);
             $table->unsignedInteger('correct_count')->default(0);
             $table->unsignedInteger('duration_seconds')->default(0);
-            $table->dateTime('started_at')->nullable();
             $table->dateTime('submitted_at')->nullable();
             $table->timestamps();
 

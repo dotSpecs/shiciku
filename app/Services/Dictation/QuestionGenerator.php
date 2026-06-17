@@ -2,19 +2,32 @@
 
 namespace App\Services\Dictation;
 
+use Illuminate\Support\Collection;
+
 class QuestionGenerator
 {
+    private const MIN_LINE_QUESTION_LENGTH = 5;
+
     public const TYPE_BLANK = 'blank';
 
     public const TYPE_NEXT = 'next';
 
     public const TYPE_PREVIOUS = 'previous';
 
+    public const TYPE_AUTHOR_CHOICE = 'author_choice';
+
+    public const TYPE_ANNOTATION_MEANING = 'annotation_meaning';
+
+    public const TYPE_POEM_SOURCE = 'poem_source';
+
+    public const TYPE_SENTENCE_ORDER = 'sentence_order';
+
     public const MODE_MIXED = 'mixed';
 
     public function __construct(
         private PoemTextParser $parser,
         private AnswerNormalizer $normalizer,
+        private ChoiceQuestionGenerator $choiceGenerator,
     ) {}
 
     /**
@@ -24,29 +37,34 @@ class QuestionGenerator
     public function generate(array $candidates, string $mode, int $limit): array
     {
         $types = $this->typesForMode($mode);
+        $allPoems = collect($candidates)->map(fn (array $candidate) => $this->candidateToPoem($candidate));
         $pool = [];
         shuffle($candidates);
 
         foreach ($candidates as $candidate) {
+            $splitMinorPunctuation = ! $this->isCi($candidate);
             [$sentenceGroups, $sentences] = $this->indexedSentenceGroups(
-                $this->parser->sentenceGroups($candidate['content'] ?? '')
+                $this->parser->sentenceGroups($candidate['content'] ?? '', $splitMinorPunctuation)
             );
+            $lineQuestionGroups = $this->isCi($candidate) ? [] : $sentenceGroups;
 
-            if ($sentences === []) {
-                continue;
-            }
+            if ($sentences !== []) {
+                foreach ($sentences as $index => $sentence) {
+                    if (! in_array(self::TYPE_BLANK, $types, true)) {
+                        continue;
+                    }
 
-            foreach ($sentences as $index => $sentence) {
-                if (in_array(self::TYPE_BLANK, $types, true)) {
                     foreach ($this->blankQuestions($candidate, $sentence, $index) as $question) {
                         $pool[] = $question;
                     }
                 }
+
+                foreach ($this->lineQuestions($candidate, $lineQuestionGroups, $sentences, $types) as $question) {
+                    $pool[] = $question;
+                }
             }
 
-            foreach ($this->lineQuestions($candidate, $sentenceGroups, $sentences, $types) as $question) {
-                $pool[] = $question;
-            }
+            $this->generateChoiceQuestions($candidate, $types, $allPoems, $pool);
         }
 
         $pool = $this->uniqueQuestions($pool);
@@ -70,6 +88,19 @@ class QuestionGenerator
             self::TYPE_BLANK => [self::TYPE_BLANK],
             self::TYPE_NEXT => [self::TYPE_NEXT],
             self::TYPE_PREVIOUS => [self::TYPE_PREVIOUS],
+            self::TYPE_AUTHOR_CHOICE => [self::TYPE_AUTHOR_CHOICE],
+            self::TYPE_ANNOTATION_MEANING => [self::TYPE_ANNOTATION_MEANING],
+            self::TYPE_POEM_SOURCE => [self::TYPE_POEM_SOURCE],
+            self::TYPE_SENTENCE_ORDER => [self::TYPE_SENTENCE_ORDER],
+            self::MODE_MIXED => [
+                self::TYPE_BLANK,
+                self::TYPE_NEXT,
+                self::TYPE_PREVIOUS,
+                self::TYPE_AUTHOR_CHOICE,
+                self::TYPE_ANNOTATION_MEANING,
+                self::TYPE_POEM_SOURCE,
+                self::TYPE_SENTENCE_ORDER,
+            ],
             default => [self::TYPE_BLANK, self::TYPE_NEXT, self::TYPE_PREVIOUS],
         };
     }
@@ -126,7 +157,7 @@ class QuestionGenerator
                 $next = $group[$index + 1];
 
                 if (in_array(self::TYPE_NEXT, $types, true)) {
-                    $questions[] = $this->lineQuestion(
+                    $question = $this->lineQuestion(
                         $candidate,
                         self::TYPE_NEXT,
                         $current['sentence'],
@@ -135,10 +166,13 @@ class QuestionGenerator
                         $next['index'],
                         '填写下一句'
                     );
+                    if ($question !== null) {
+                        $questions[] = $question;
+                    }
                 }
 
                 if (in_array(self::TYPE_PREVIOUS, $types, true)) {
-                    $questions[] = $this->lineQuestion(
+                    $question = $this->lineQuestion(
                         $candidate,
                         self::TYPE_PREVIOUS,
                         $next['sentence'],
@@ -147,6 +181,9 @@ class QuestionGenerator
                         $current['index'],
                         '填写上一句'
                     );
+                    if ($question !== null) {
+                        $questions[] = $question;
+                    }
                 }
             }
         }
@@ -170,11 +207,17 @@ class QuestionGenerator
 
         foreach ($sentences as $index => $sentence) {
             if (in_array(self::TYPE_NEXT, $types, true) && isset($sentences[$index + 1])) {
-                $questions[] = $this->lineQuestion($candidate, self::TYPE_NEXT, $sentence, $sentences[$index + 1], $index, $index + 1, '填写下一句');
+                $question = $this->lineQuestion($candidate, self::TYPE_NEXT, $sentence, $sentences[$index + 1], $index, $index + 1, '填写下一句');
+                if ($question !== null) {
+                    $questions[] = $question;
+                }
             }
 
             if (in_array(self::TYPE_PREVIOUS, $types, true) && isset($sentences[$index - 1])) {
-                $questions[] = $this->lineQuestion($candidate, self::TYPE_PREVIOUS, $sentence, $sentences[$index - 1], $index, $index - 1, '填写上一句');
+                $question = $this->lineQuestion($candidate, self::TYPE_PREVIOUS, $sentence, $sentences[$index - 1], $index, $index - 1, '填写上一句');
+                if ($question !== null) {
+                    $questions[] = $question;
+                }
             }
         }
 
@@ -194,7 +237,11 @@ class QuestionGenerator
         int $promptIndex,
         int $answerIndex,
         string $direction
-    ): array {
+    ): ?array {
+        if (! $this->isLineQuestionPair($promptSentence, $answerSentence)) {
+            return null;
+        }
+
         $acceptedAnswers = $this->parser->acceptedTexts($answerSentence);
 
         return $this->baseQuestion($candidate, [
@@ -205,6 +252,16 @@ class QuestionGenerator
             'direction' => $direction,
             'source_key' => 'line:'.$promptIndex.':'.$answerIndex,
         ]);
+    }
+
+    /**
+     * @param  array{text: string, variants: array<int, array{from: string, to: string}>}  $prompt
+     * @param  array{text: string, variants: array<int, array{from: string, to: string}>}  $answer
+     */
+    private function isLineQuestionPair(array $prompt, array $answer): bool
+    {
+        return mb_strlen($prompt['text'], 'UTF-8') >= self::MIN_LINE_QUESTION_LENGTH
+            && mb_strlen($answer['text'], 'UTF-8') >= self::MIN_LINE_QUESTION_LENGTH;
     }
 
     /**
@@ -232,7 +289,7 @@ class QuestionGenerator
             'accepted_answers' => $acceptedAnswers,
             'answer_key' => $answerKey,
             'source_key' => $question['source_key'] ?? $question['type'].':'.$question['prompt'],
-            ...array_intersect_key($question, array_flip(['answer_hint', 'direction'])),
+            ...array_intersect_key($question, array_flip(['answer_hint', 'direction', 'options', 'metadata'])),
         ];
     }
 
@@ -358,6 +415,7 @@ class QuestionGenerator
         for ($index = 0; $index < $length; $index++) {
             if (isset($hidden[$index])) {
                 $prompt .= '_';
+
                 continue;
             }
 
@@ -578,5 +636,104 @@ class QuestionGenerator
         }
 
         return $ordered;
+    }
+
+    /**
+     * 生成选择题（作者、注释、出处、排序）
+     *
+     * @param  array<string, mixed>  $candidate
+     * @param  array<int, string>  $types
+     * @param  Collection<int, object>  $allPoems
+     * @param  array<int, array<string, mixed>>  $pool
+     */
+    private function generateChoiceQuestions(array $candidate, array $types, Collection $allPoems, array &$pool): void
+    {
+        $poem = $this->candidateToPoem($candidate);
+        $content = null;
+        $cleanContent = function () use ($candidate, &$content): string {
+            $content ??= $this->parser->cleanContent($candidate['content'] ?? '');
+
+            return $content;
+        };
+
+        $factories = [
+            self::TYPE_AUTHOR_CHOICE => fn () => $this->choiceGenerator->generateAuthorChoiceQuestion($poem, $allPoems),
+            self::TYPE_POEM_SOURCE => fn () => $this->choiceGenerator->generatePoemSourceQuestion($poem, $cleanContent(), $allPoems),
+            self::TYPE_SENTENCE_ORDER => fn () => $this->choiceGenerator->generateSentenceOrderQuestion($poem, $cleanContent()),
+        ];
+
+        foreach ($factories as $type => $factory) {
+            if (! in_array($type, $types, true)) {
+                continue;
+            }
+
+            $question = $factory();
+            if ($question !== null) {
+                $pool[] = $this->wrapChoiceQuestion($candidate, $question);
+            }
+        }
+
+        if (in_array(self::TYPE_ANNOTATION_MEANING, $types, true)) {
+            foreach ($this->choiceGenerator->generateAnnotationMeaningQuestions($poem, $cleanContent()) as $question) {
+                $pool[] = $this->wrapChoiceQuestion($candidate, $question);
+            }
+        }
+    }
+
+    /**
+     * 将 candidate 数组转换为 Poem 对象（用于 ChoiceQuestionGenerator）
+     *
+     * @param  array<string, mixed>  $candidate
+     */
+    private function candidateToPoem(array $candidate): object
+    {
+        return (object) [
+            'id' => $candidate['poem_pk'],
+            'poem_id' => $candidate['poem_id'],
+            'name' => $candidate['poem_name'],
+            'author_id' => $candidate['author_id'] ?? null,
+            'author' => $candidate['author_name'],
+            'chaodai' => $candidate['chaodai'],
+            'type' => $candidate['type'] ?? null,
+            'content' => $candidate['content'] ?? '',
+            'yizhu_content' => $candidate['yizhu_content'] ?? null,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $candidate
+     */
+    private function isCi(array $candidate): bool
+    {
+        return ($candidate['type'] ?? null) === '词';
+    }
+
+    /**
+     * 包装选择题为标准题目格式
+     *
+     * @param  array<string, mixed>  $candidate
+     * @param  array<string, mixed>  $question
+     * @return array<string, mixed>
+     */
+    private function wrapChoiceQuestion(array $candidate, array $question): array
+    {
+        $payload = [
+            'type' => $question['type'],
+            'prompt' => $question['prompt'],
+            'answer' => $question['answer'],
+            'accepted_answers' => $question['accepted_answers'] ?? [$question['answer']],
+            'options' => $question['options'],
+            'source_key' => implode(':', [
+                $question['type'],
+                $candidate['poem_pk'],
+                md5($question['prompt'].'|'.$question['answer']),
+            ]),
+        ];
+
+        if (isset($question['metadata'])) {
+            $payload['metadata'] = $question['metadata'];
+        }
+
+        return $this->baseQuestion($candidate, $payload);
     }
 }

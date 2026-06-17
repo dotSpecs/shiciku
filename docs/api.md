@@ -405,6 +405,211 @@
 
 ---
 
+## 诗词闯关接口
+
+诗词闯关接口均需要完整 `wx.sign` 鉴权。题库按年级册 `grade_name` 过滤，当前支持小学、初中、高中古诗词专题下的同名章节。
+
+### `GET /api/dictation/challenge` — 获取闯关题目
+
+**Query 参数**
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `grade_name` | string | 是 | 年级册名称，如 `一年级下册` |
+| `mode` | string | 否 | `blank` / `next` / `previous` / `author_choice` / `annotation_meaning` / `poem_source` / `sentence_order` / `mixed`，默认 `mixed` |
+| `limit` | int | 否 | 题目数量，默认 10，最大 20 |
+
+**抽题规则**
+
+- 优先让每首诗词在同一关中只出现一次。
+- 当可用诗词数少于 `limit` 时，允许同一首诗词补充第二道、第三道题，但优先选择该诗词尚未出现过的题型。
+- 如果题库仍不足，才会继续使用同一首诗词的同一题型下其他不重复题目。
+- 实际可生成题量少于 `limit` 时，`total` 返回实际题数。
+
+**响应**
+
+```json
+{
+  "challenge_id": "dc_P1m3c7a9Kxv2r8ZtQn4Ls6Bw",
+  "challenge_token": "encrypted-token",
+  "grade_name": "一年级下册",
+  "mode": "mixed",
+  "total": 10,
+  "ttl_seconds": 1800,
+  "questions": [
+    {
+      "question_id": 123,
+      "type": "blank",
+      "poem_id": "jingyesi",
+      "poem_name": "静夜思",
+      "author_name": "李白",
+      "chaodai": "唐代",
+      "prompt": "床前__光",
+      "answer_hint": "2个字",
+      "instance_token": "encrypted-instance-token"
+    },
+    {
+      "question_id": 124,
+      "type": "author_choice",
+      "poem_id": "chunxiao",
+      "poem_name": "春晓",
+      "author_name": "孟浩然",
+      "chaodai": "唐代",
+      "prompt": "《春晓》的作者是？",
+      "options": ["孟浩然", "李白", "王维", "杜甫"],
+      "instance_token": "encrypted-instance-token"
+    }
+  ]
+}
+```
+
+获取题目接口不返回标准答案。前端提交时必须原样带回每题的 `question_id` 和 `instance_token`。
+
+**错误**
+
+| 场景 | 状态码 | 响应 |
+|---|---|---|
+| 年级册不存在或不在闯关范围内 | 404 | `{"error":"grade_scope_not_found"}` |
+| 参数非法 | 422 | Laravel validation errors |
+
+### `POST /api/dictation/challenge/submit` — 提交闯关结果
+
+**请求**
+
+```json
+{
+  "challenge_token": "encrypted-token",
+  "duration_seconds": 86,
+  "answers": [
+    {
+      "question_id": 123,
+      "user_answer": "明月",
+      "instance_token": "encrypted-instance-token"
+    }
+  ]
+}
+```
+
+**响应**
+
+```json
+{
+  "attempt_id": 88,
+  "total": 10,
+  "correct_count": 8,
+  "wrong_count": 2,
+  "duration_seconds": 86,
+  "passed": true,
+  "items": [
+    {
+      "question_id": 123,
+      "type": "blank",
+      "poem_id": "jingyesi",
+      "poem_name": "静夜思",
+      "prompt": "床前__光",
+      "answer": "明月",
+      "accepted_answers": ["明月"],
+      "options": null,
+      "user_answer": "明月",
+      "is_correct": true
+    }
+  ]
+}
+```
+
+`ttl_seconds` 用于前端倒计时提示；服务端不按 token 内过期时间拒绝提交。漏答题目按空答案评分。
+
+### `GET /api/dictation/wrongs` — 获取错题本
+
+**Query 参数**
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `grade_name` | string | 否 | 按年级册筛选 |
+| `status` | string | 否 | `active` / `resolved`，默认 `active` |
+| `page` | int | 否 | 页码，默认 1，上限 50 |
+
+**响应**
+
+```json
+{
+  "data": [
+    {
+      "id": 12,
+      "poem_id": "jingyesi",
+      "poem_name": "静夜思",
+      "author_name": "李白",
+      "chaodai": "唐代",
+      "question_id": 123,
+      "question_type": "blank",
+      "prompt": "床前__光",
+      "last_user_answer": "月光",
+      "wrong_count": 2,
+      "reviewed_count": 1,
+      "first_attempt_item_id": 301,
+      "last_attempt_item_id": 420,
+      "last_wrong_at": "2026-06-16 10:30:00",
+      "resolved_at": null
+    }
+  ],
+  "current_page": 1,
+  "per_page": 20,
+  "has_more": true
+}
+```
+
+### `POST /api/dictation/wrongs/{id}/review` — 复习错题
+
+**请求**
+
+```json
+{
+  "user_answer": "明月"
+}
+```
+
+**响应**
+
+```json
+{
+  "id": 12,
+  "question_type": "blank",
+  "prompt": "床前__光",
+  "answer": "明月",
+  "accepted_answers": ["明月"],
+  "user_answer": "明月",
+  "is_correct": true,
+  "resolved": true,
+  "wrong_count": 2,
+  "reviewed_count": 2,
+  "last_reviewed_at": "2026-06-16 11:00:00",
+  "resolved_at": "2026-06-16 11:00:00"
+}
+```
+
+错题不存在或不属于当前用户返回 `404 {"error":"wrong_item_not_found"}`。
+
+### `GET /api/dictation/stats` — 获取闯关统计
+
+**Query 参数**
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `grade_name` | string | 否 | 按年级册筛选 |
+
+**响应**
+
+```json
+{
+  "today_attempts": 2,
+  "today_correct_count": 16,
+  "today_total": 20,
+  "active_wrong_count": 5
+}
+```
+
+---
+
 ## 工具接口
 
 ### `GET /api/custom_pinyin` — 获取自定义拼音配置

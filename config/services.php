@@ -51,4 +51,22 @@ return [
         'bucket' => env('QINIU_BUCKET'),
         'host' => env('QINIU_HOST'),
     ],
+
+    'deepseek' => [
+        'api_key' => env('DEEPSEEK_API_KEY'),
+        'api_url' => env('DEEPSEEK_API_URL', 'https://api.deepseek.com/chat/completions'),
+        'model' => env('DEEPSEEK_MODEL', 'deepseek-chat'),
+        'timeout' => env('DEEPSEEK_TIMEOUT', 60),
+        'max_tokens' => env('DEEPSEEK_MAX_TOKENS', 1024),
+        'temperature' => env('DEEPSEEK_TEMPERATURE', 0.2),
+    ],
+
+    'alibaba_ai' => [
+        'api_key' => env('ALIBABA_AI_API_KEY', env('DASHSCOPE_API_KEY')),
+        'api_url' => env('ALIBABA_AI_API_URL', 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'),
+        'model' => env('ALIBABA_AI_MODEL', 'qwen-plus'),
+        'timeout' => env('ALIBABA_AI_TIMEOUT', 60),
+        'max_tokens' => env('ALIBABA_AI_MAX_TOKENS', 2048),
+        'temperature' => env('ALIBABA_AI_TEMPERATURE', 0.1),
+    ],
 ];

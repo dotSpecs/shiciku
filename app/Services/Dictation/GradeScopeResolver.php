@@ -7,7 +7,7 @@ use App\Models\ZhuantiPoem;
 
 class GradeScopeResolver
 {
-    public const ZHUANTI_IDS = [4, 5, 6];
+    public const ZHUANTI_IDS = [4, 5];
 
     public function resolve(string $gradeName): ?array
     {
@@ -36,7 +36,8 @@ class GradeScopeResolver
                 'zhuanti:id,name,alias',
                 'chapter:id,zhuanti_id,name,sub_title',
                 'poem' => function ($query) {
-                    $query->select('id', 'poem_id', 'name', 'content', 'author_id', 'author_name', 'dynasty_id', 'chaodai', 'order')
+                    $query->select('id', 'poem_id', 'name', 'content', 'yizhu_content', 'type', 'author_id', 'author_name', 'dynasty_id', 'chaodai', 'order')
+                        ->whereIn('type', ['诗', '词'])
                         ->with(['author:id,author_id,name', 'dynasty:id,name']);
                 },
             ])
@@ -54,9 +55,12 @@ class GradeScopeResolver
                 'poem_pk' => $row->poem->id,
                 'poem_id' => $row->poem->poem_id,
                 'poem_name' => $row->poem->name,
+                'author_id' => $row->poem->author_id,
                 'author_name' => $row->poem->author?->name ?: $row->poem->author_name,
                 'chaodai' => $row->poem->dynasty?->name ?: $row->poem->chaodai,
                 'content' => $row->poem->content,
+                'yizhu_content' => $row->poem->yizhu_content,
+                'type' => $row->poem->type,
                 'zhuanti_id' => $row->zhuanti_id,
                 'zhuanti_alias' => $row->zhuanti?->alias,
                 'chapter_id' => $row->chapter_id,
