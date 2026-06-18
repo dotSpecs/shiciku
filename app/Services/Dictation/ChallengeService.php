@@ -3,7 +3,6 @@
 namespace App\Services\Dictation;
 
 use App\Models\Dictation\Attempt;
-use App\Models\Dictation\AttemptItem;
 use App\Models\Dictation\Question;
 use App\Models\Dictation\WrongItem;
 use App\Models\User;
@@ -295,6 +294,7 @@ class ChallengeService
         }
 
         $attempt = DB::transaction(function () use ($user, $challenge, $durationSeconds, $correctCount, $items) {
+            $now = now();
             $attempt = Attempt::query()->create([
                 'user_id' => $user->id,
                 'grade_name' => $challenge['grade_name'],
@@ -302,20 +302,31 @@ class ChallengeService
                 'total' => count($items),
                 'correct_count' => $correctCount,
                 'duration_seconds' => max(0, $durationSeconds),
-                'submitted_at' => now(),
+                'submitted_at' => $now,
             ]);
 
+            $attemptItems = [];
             foreach ($items as $index => $item) {
-                $attemptItem = AttemptItem::query()->create([
+                $attemptItems[] = [
                     'attempt_id' => $attempt->id,
                     'question_id' => $item['question_id'],
                     'user_answer' => $item['user_answer'],
                     'is_correct' => $item['is_correct'],
                     'sort' => $index + 1,
-                ]);
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
 
+            DB::table('dictation_attempt_items')->insert($attemptItems);
+
+            $attemptItemIds = DB::table('dictation_attempt_items')
+                ->where('attempt_id', $attempt->id)
+                ->pluck('id', 'sort');
+
+            foreach ($items as $index => $item) {
                 if (! $item['is_correct']) {
-                    $this->recordWrong($user, $item, $attemptItem);
+                    $this->recordWrong($user, $item, (int) $attemptItemIds[$index + 1]);
                 }
             }
 
@@ -505,7 +516,7 @@ class ChallengeService
     /**
      * @param  array<string, mixed>  $item
      */
-    private function recordWrong(User $user, array $item, AttemptItem $attemptItem): void
+    private function recordWrong(User $user, array $item, int $attemptItemId): void
     {
         $attributes = [
             'user_id' => $user->id,
@@ -530,21 +541,26 @@ class ChallengeService
             'options' => $item['options'] ?? null,
             'last_user_answer' => $item['user_answer'],
             'instance_metadata' => $item['instance_metadata'] ?? [],
-            'last_attempt_item_id' => $attemptItem->id,
+            'last_attempt_item_id' => $attemptItemId,
             'last_wrong_at' => $now,
             'resolved_at' => null,
         ];
 
         if ($wrong) {
-            $wrong->forceFill($values)->save();
-            $wrong->increment('wrong_count');
+            WrongItem::query()
+                ->whereKey($wrong->id)
+                ->update([
+                    ...$values,
+                    'wrong_count' => DB::raw('wrong_count + 1'),
+                    'updated_at' => $now,
+                ]);
 
             return;
         }
 
         WrongItem::query()->create([
             ...$attributes,
-            'first_attempt_item_id' => $attemptItem->id,
+            'first_attempt_item_id' => $attemptItemId,
             ...$values,
             'wrong_count' => 1,
             'reviewed_count' => 0,

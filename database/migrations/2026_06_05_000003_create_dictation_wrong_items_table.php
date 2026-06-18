@@ -32,6 +32,7 @@ return new class extends Migration
             $table->dateTime('resolved_at')->nullable();
             $table->timestamps();
 
+            $table->unique(['user_id', 'question_id'], 'uniq_dict_wrong_user_question');
             $table->index(['user_id', 'resolved_at'], 'idx_dict_wrong_user_resolved');
             $table->index(['user_id', 'grade_name'], 'idx_dict_wrong_user_grade');
             $table->index('question_id', 'idx_dict_wrong_question');
