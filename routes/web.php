@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Web\AuthorController;
 use App\Http\Controllers\Web\BookController;
+use App\Http\Controllers\Web\DictationController;
 use App\Http\Controllers\Web\IndexController;
 use App\Http\Controllers\Web\MingjuController;
 use App\Http\Controllers\Web\PoemController;
@@ -23,6 +24,10 @@ Route::get('/author/{author_id}', [AuthorController::class, 'show'])->name('auth
 
 Route::get('/mingju', [MingjuController::class, 'index'])->name('mingju.index');
 Route::get('/mingju/{mingju_id}', [MingjuController::class, 'show'])->name('mingju.show');
+
+Route::get('/dictation', [DictationController::class, 'index'])->name('dictation.index');
+Route::get('/dictation/challenge', [DictationController::class, 'challenge'])->name('dictation.challenge');
+Route::post('/dictation/submit', [DictationController::class, 'submit'])->name('dictation.submit');
 
 Route::get('/book', [BookController::class, 'index'])->name('book.index');
 Route::get('/book/{book_id}', [BookController::class, 'show'])->name('book.show');

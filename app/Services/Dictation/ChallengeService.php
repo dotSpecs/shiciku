@@ -38,6 +38,21 @@ class ChallengeService
 
     public function challenge(User $user, string $gradeName, string $mode, int $limit): ?array
     {
+        return $this->makeChallenge(
+            $gradeName,
+            $mode,
+            $limit,
+            fn (string $gradeName, string $mode, int $limit, array $questionIds): string => $this->challengeToken($user, $gradeName, $mode, $limit, $questionIds)
+        );
+    }
+
+    public function practiceChallenge(string $gradeName, string $mode, int $limit): ?array
+    {
+        return $this->makeChallenge($gradeName, $mode, $limit, $this->practiceChallengeToken(...));
+    }
+
+    private function makeChallenge(string $gradeName, string $mode, int $limit, callable $tokenFactory): ?array
+    {
         $gradeName = trim($gradeName);
         if ($gradeName === '') {
             return null;
@@ -69,9 +84,10 @@ class ChallengeService
 
         return [
             'challenge_id' => $challengeId,
-            'challenge_token' => $this->challengeToken($user, $gradeName, $mode, $selectedQuestions->pluck('id')->all()),
+            'challenge_token' => $tokenFactory($gradeName, $mode, $limit, $selectedQuestions->pluck('id')->all()),
             'grade_name' => $gradeName,
             'mode' => $mode,
+            'limit' => $limit,
             'total' => count($instances),
             'ttl_seconds' => self::TOKEN_TTL_SECONDS,
             'questions' => array_map(fn (array $question) => $this->publicQuestion($question), $instances),
@@ -244,6 +260,103 @@ class ChallengeService
             return null;
         }
 
+        $result = $this->scoreChallenge($challenge, $durationSeconds, $answers);
+        if ($result === null) {
+            return null;
+        }
+
+        $items = $result['items'];
+        $correctCount = $result['correct_count'];
+
+        $attempt = DB::transaction(function () use ($user, $challenge, $durationSeconds, $correctCount, $items) {
+            $now = now();
+            $attempt = Attempt::query()->create([
+                'user_id' => $user->id,
+                'grade_name' => $challenge['grade_name'],
+                'mode' => $challenge['mode'],
+                'total' => count($items),
+                'correct_count' => $correctCount,
+                'duration_seconds' => max(0, $durationSeconds),
+                'submitted_at' => $now,
+            ]);
+
+            $attemptItems = [];
+            foreach ($items as $index => $item) {
+                $attemptItems[] = [
+                    'attempt_id' => $attempt->id,
+                    'question_id' => $item['question_id'],
+                    'user_answer' => $item['user_answer'],
+                    'is_correct' => $item['is_correct'],
+                    'sort' => $index + 1,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+
+            DB::table('dictation_attempt_items')->insert($attemptItems);
+
+            $attemptItemIds = DB::table('dictation_attempt_items')
+                ->where('attempt_id', $attempt->id)
+                ->pluck('id', 'sort');
+
+            foreach ($items as $index => $item) {
+                if (! $item['is_correct']) {
+                    $this->recordWrong($user, $item, (int) $attemptItemIds[$index + 1]);
+                }
+            }
+
+            return $attempt;
+        });
+
+        return [
+            'attempt_id' => $attempt->id,
+            'grade_name' => $result['grade_name'],
+            'mode' => $result['mode'],
+            'limit' => $result['limit'],
+            'total' => $result['total'],
+            'correct_count' => $result['correct_count'],
+            'wrong_count' => $result['wrong_count'],
+            'duration_seconds' => $result['duration_seconds'],
+            'passed' => $result['passed'],
+            'items' => array_map(fn (array $item) => $this->resultItem($item), $items),
+        ];
+    }
+
+    /**
+     * @param  array<int, array{question_id: int|string, user_answer?: string|null, instance_token?: string|null}>  $answers
+     */
+    public function scorePractice(string $challengeToken, int $durationSeconds, array $answers): ?array
+    {
+        $challenge = $this->parsePracticeChallengeToken($challengeToken);
+        if ($challenge === null) {
+            return null;
+        }
+
+        $result = $this->scoreChallenge($challenge, $durationSeconds, $answers);
+        if ($result === null) {
+            return null;
+        }
+
+        return [
+            'grade_name' => $result['grade_name'],
+            'mode' => $result['mode'],
+            'limit' => $result['limit'],
+            'total' => $result['total'],
+            'correct_count' => $result['correct_count'],
+            'wrong_count' => $result['wrong_count'],
+            'duration_seconds' => $result['duration_seconds'],
+            'passed' => $result['passed'],
+            'items' => array_map(fn (array $item) => $this->resultItem($item), $result['items']),
+        ];
+    }
+
+    /**
+     * @param  array{grade_name: string, mode: string, question_ids: array<int, int>}  $challenge
+     * @param  array<int, array{question_id: int|string, user_answer?: string|null, instance_token?: string|null}>  $answers
+     * @return array{grade_name: string, mode: string, total: int, correct_count: int, wrong_count: int, duration_seconds: int, passed: bool, items: array<int, array<string, mixed>>}|null
+     */
+    private function scoreChallenge(array $challenge, int $durationSeconds, array $answers): ?array
+    {
         $answerMap = [];
         foreach ($answers as $answer) {
             if (isset($answer['question_id'])) {
@@ -293,54 +406,18 @@ class ChallengeService
             ];
         }
 
-        $attempt = DB::transaction(function () use ($user, $challenge, $durationSeconds, $correctCount, $items) {
-            $now = now();
-            $attempt = Attempt::query()->create([
-                'user_id' => $user->id,
-                'grade_name' => $challenge['grade_name'],
-                'mode' => $challenge['mode'],
-                'total' => count($items),
-                'correct_count' => $correctCount,
-                'duration_seconds' => max(0, $durationSeconds),
-                'submitted_at' => $now,
-            ]);
-
-            $attemptItems = [];
-            foreach ($items as $index => $item) {
-                $attemptItems[] = [
-                    'attempt_id' => $attempt->id,
-                    'question_id' => $item['question_id'],
-                    'user_answer' => $item['user_answer'],
-                    'is_correct' => $item['is_correct'],
-                    'sort' => $index + 1,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ];
-            }
-
-            DB::table('dictation_attempt_items')->insert($attemptItems);
-
-            $attemptItemIds = DB::table('dictation_attempt_items')
-                ->where('attempt_id', $attempt->id)
-                ->pluck('id', 'sort');
-
-            foreach ($items as $index => $item) {
-                if (! $item['is_correct']) {
-                    $this->recordWrong($user, $item, (int) $attemptItemIds[$index + 1]);
-                }
-            }
-
-            return $attempt;
-        });
+        $total = count($items);
 
         return [
-            'attempt_id' => $attempt->id,
-            'total' => count($items),
+            'grade_name' => $challenge['grade_name'],
+            'mode' => $challenge['mode'],
+            'limit' => $challenge['limit'] ?? count($challenge['question_ids']),
+            'total' => $total,
             'correct_count' => $correctCount,
-            'wrong_count' => count($items) - $correctCount,
+            'wrong_count' => $total - $correctCount,
             'duration_seconds' => max(0, $durationSeconds),
-            'passed' => count($items) > 0 && ($correctCount / count($items)) >= 0.8,
-            'items' => array_map(fn (array $item) => $this->resultItem($item), $items),
+            'passed' => $total > 0 && ($correctCount / $total) >= 0.8,
+            'items' => $items,
         ];
     }
 
@@ -627,12 +704,27 @@ class ChallengeService
     /**
      * @param  array<int, int>  $questionIds
      */
-    private function challengeToken(User $user, string $gradeName, string $mode, array $questionIds): string
+    private function challengeToken(User $user, string $gradeName, string $mode, int $limit, array $questionIds): string
     {
         return $this->tokenCodec->encode([
             'uid' => $user->id,
             'grade_name' => $gradeName,
             'mode' => $mode,
+            'limit' => $limit,
+            'question_ids' => array_values(array_map('intval', $questionIds)),
+        ]);
+    }
+
+    /**
+     * @param  array<int, int>  $questionIds
+     */
+    private function practiceChallengeToken(string $gradeName, string $mode, int $limit, array $questionIds): string
+    {
+        return $this->tokenCodec->encode([
+            'scope' => 'web_practice',
+            'grade_name' => $gradeName,
+            'mode' => $mode,
+            'limit' => $limit,
             'question_ids' => array_values(array_map('intval', $questionIds)),
         ]);
     }
@@ -647,14 +739,49 @@ class ChallengeService
             return null;
         }
 
+        return $this->normalizedChallengePayload($payload);
+    }
+
+    /**
+     * @return array{grade_name: string, mode: string, question_ids: array<int, int>}|null
+     */
+    private function parsePracticeChallengeToken(string $token): ?array
+    {
+        $payload = $this->tokenCodec->decode($token);
+        if ($payload === null || ($payload['scope'] ?? null) !== 'web_practice') {
+            return null;
+        }
+
+        return $this->normalizedChallengePayload($payload);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array{grade_name: string, mode: string, question_ids: array<int, int>}|null
+     */
+    private function normalizedChallengePayload(array $payload): ?array
+    {
         if (! is_string($payload['grade_name'] ?? null) || ! is_string($payload['mode'] ?? null) || ! is_array($payload['question_ids'] ?? null)) {
+            return null;
+        }
+
+        if (! in_array($payload['mode'], self::MODES, true)) {
+            return null;
+        }
+
+        $questionIds = array_values(array_filter(
+            array_map('intval', $payload['question_ids']),
+            fn (int $questionId) => $questionId > 0
+        ));
+        if ($questionIds === []) {
             return null;
         }
 
         return [
             'grade_name' => $payload['grade_name'],
             'mode' => $payload['mode'],
-            'question_ids' => array_values(array_map('intval', $payload['question_ids'])),
+            'limit' => max(1, (int) ($payload['limit'] ?? count($questionIds))),
+            'question_ids' => $questionIds,
         ];
     }
 }

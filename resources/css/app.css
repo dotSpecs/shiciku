@@ -112,3 +112,809 @@ body {
 }
 
 /* Specific overrides for consistent sizing if needed, currently reusing scaling via font-size above */
+
+/* Dictation quiz */
+.dictation-page {
+    --dictation-ink: #0f172a;
+    --dictation-muted: #64748b;
+    --dictation-border: #e2e8f0;
+    --dictation-panel: #ffffff;
+    --dictation-subtle: #f8fafc;
+    --dictation-accent: #ef4444;
+    --dictation-accent-dark: #dc2626;
+    --dictation-success: #059669;
+    max-width: 980px;
+    margin: 0 auto;
+    color: var(--dictation-ink);
+}
+
+.dictation-page *,
+.dictation-page *::before,
+.dictation-page *::after {
+    box-sizing: border-box;
+    letter-spacing: 0;
+}
+
+.dictation-page .hidden {
+    display: none !important;
+}
+
+.dictation-shell,
+.dictation-start-panel,
+.dictation-progress-panel,
+.dictation-question,
+.dictation-review-item {
+    border: 1px solid var(--dictation-border);
+    border-radius: 8px;
+    background: var(--dictation-panel);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+.dictation-shell {
+    padding: 22px;
+}
+
+.dictation-home {
+    min-height: 520px;
+    display: flex;
+    align-items: center;
+}
+
+.dictation-home-grid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+    gap: 32px;
+    align-items: center;
+}
+
+.dictation-kicker,
+.dictation-type-label {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    border: 1px solid #fecaca;
+    border-radius: 999px;
+    background: #fef2f2;
+    color: var(--dictation-accent-dark);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+    padding: 7px 11px;
+}
+
+.dictation-home-title h1,
+.dictation-topbar h1,
+.dictation-result-title h1 {
+    margin: 14px 0 0;
+    color: var(--dictation-ink);
+    font-size: 34px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.dictation-home-meta,
+.dictation-result-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.dictation-home-meta span,
+.dictation-result-meta span {
+    display: inline-flex;
+    min-height: 34px;
+    align-items: center;
+    border: 1px solid var(--dictation-border);
+    border-radius: 999px;
+    background: var(--dictation-subtle);
+    color: var(--dictation-muted);
+    font-size: 14px;
+    font-weight: 700;
+    padding: 7px 12px;
+}
+
+.dictation-start-panel {
+    padding: 24px;
+}
+
+.dictation-start-form {
+    display: grid;
+    gap: 20px;
+}
+
+.dictation-field {
+    display: grid;
+    gap: 10px;
+}
+
+.dictation-field label {
+    color: var(--dictation-muted);
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.dictation-select,
+.dictation-answer-input {
+    width: 100%;
+    min-height: 52px;
+    border: 1px solid var(--dictation-border);
+    border-radius: 8px;
+    background: #ffffff;
+    color: var(--dictation-ink);
+    font-size: 17px;
+    line-height: 1.4;
+    outline: none;
+    padding: 12px 14px;
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.dictation-select:focus,
+.dictation-answer-input:focus {
+    border-color: var(--dictation-accent);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.14);
+}
+
+.dictation-setup-grid,
+.dictation-stats-grid,
+.dictation-answer-grid {
+    display: grid;
+    gap: 12px;
+}
+
+.dictation-setup-grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.dictation-setup-grid div,
+.dictation-stats-grid div,
+.dictation-answer-grid div {
+    border: 1px solid var(--dictation-border);
+    border-radius: 8px;
+    background: var(--dictation-subtle);
+    padding: 14px;
+}
+
+.dictation-setup-grid span,
+.dictation-stats-grid span,
+.dictation-answer-grid span {
+    display: block;
+    color: var(--dictation-muted);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.dictation-setup-grid strong,
+.dictation-stats-grid strong,
+.dictation-answer-grid strong {
+    display: block;
+    margin-top: 6px;
+    color: var(--dictation-ink);
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
+.dictation-primary-button,
+.dictation-secondary-button {
+    display: inline-flex;
+    min-height: 48px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1;
+    padding: 14px 20px;
+    text-align: center;
+    text-decoration: none;
+    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.dictation-primary-button {
+    border: 1px solid var(--dictation-accent);
+    background: var(--dictation-accent);
+    color: #ffffff;
+}
+
+.dictation-primary-button:hover,
+.dictation-primary-button:focus {
+    border-color: var(--dictation-accent-dark);
+    background: var(--dictation-accent-dark);
+    color: #ffffff;
+}
+
+.dictation-secondary-button {
+    border: 1px solid var(--dictation-border);
+    background: #ffffff;
+    color: var(--dictation-ink);
+}
+
+.dictation-secondary-button:hover,
+.dictation-secondary-button:focus {
+    border-color: #cbd5e1;
+    background: var(--dictation-subtle);
+    color: var(--dictation-ink);
+}
+
+.dictation-primary-button:active,
+.dictation-secondary-button:active {
+    transform: translateY(1px);
+}
+
+.dictation-secondary-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+    transform: none;
+}
+
+.dictation-alert,
+.dictation-empty {
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    background: #fef2f2;
+    color: #b91c1c;
+    font-size: 15px;
+    line-height: 1.6;
+    padding: 12px 14px;
+}
+
+.dictation-topbar {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: center;
+}
+
+.dictation-back-button {
+    display: inline-flex;
+    width: 48px;
+    height: 48px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--dictation-border);
+    border-radius: 999px;
+    background: #ffffff;
+    color: var(--dictation-ink);
+    font-size: 34px;
+    line-height: 1;
+    text-decoration: none;
+}
+
+.dictation-back-button:hover,
+.dictation-back-button:focus {
+    border-color: var(--dictation-accent);
+    color: var(--dictation-accent);
+}
+
+.dictation-timer {
+    min-width: 116px;
+    border: 1px solid var(--dictation-border);
+    border-radius: 8px;
+    background: var(--dictation-subtle);
+    padding: 10px 14px;
+    text-align: right;
+}
+
+.dictation-timer span {
+    display: block;
+    color: var(--dictation-muted);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.dictation-timer strong {
+    display: block;
+    margin-top: 4px;
+    color: var(--dictation-accent);
+    font-size: 24px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.dictation-progress-panel {
+    margin-top: 16px;
+    padding: 14px;
+}
+
+.dictation-progress-copy {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--dictation-muted);
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.dictation-progress-track {
+    height: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e2e8f0;
+    margin-top: 10px;
+}
+
+.dictation-progress-fill {
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--dictation-accent);
+    transition: width 180ms ease;
+}
+
+.dictation-ttl-notice {
+    margin-top: 10px;
+    border-radius: 8px;
+    background: var(--dictation-subtle);
+    color: var(--dictation-muted);
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 8px 10px;
+}
+
+.dictation-ttl-notice.is-expired {
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.dictation-question-dots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 12px;
+}
+
+.dictation-question-dot {
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--dictation-border);
+    border-radius: 999px;
+    background: #ffffff;
+    color: var(--dictation-muted);
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.dictation-question-dot.is-active {
+    border-color: var(--dictation-accent);
+    background: var(--dictation-accent);
+    color: #ffffff;
+}
+
+.dictation-question-dot.is-answered:not(.is-active) {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: var(--dictation-accent-dark);
+}
+
+.dictation-question-stack {
+    margin-top: 16px;
+}
+
+.dictation-question {
+    display: none;
+    min-height: 0;
+    padding: 20px;
+}
+
+.dictation-question.is-active {
+    display: block;
+}
+
+.dictation-question-head,
+.dictation-review-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.dictation-question-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.dictation-instruction,
+.dictation-question-count {
+    color: var(--dictation-muted);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.dictation-source {
+    margin-top: 12px;
+    color: var(--dictation-muted);
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+.dictation-prompt {
+    margin-top: 14px;
+    border-radius: 8px;
+    background: var(--dictation-subtle);
+    color: var(--dictation-ink);
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+    overflow-wrap: anywhere;
+    padding: 16px 18px;
+    text-align: center;
+    white-space: pre-wrap;
+}
+
+.dictation-blank-group {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 0.18em;
+    margin: 0 0.12em;
+    vertical-align: baseline;
+}
+
+.dictation-blank-slot {
+    display: inline-block;
+    width: 1.05em;
+    height: 0.9em;
+    border-bottom: 3px solid currentColor;
+}
+
+.dictation-options {
+    display: grid;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.dictation-option {
+    position: relative;
+    display: grid;
+    min-height: 48px;
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    border: 1px solid var(--dictation-border);
+    border-radius: 8px;
+    background: #ffffff;
+    color: var(--dictation-ink);
+    cursor: pointer;
+    padding: 9px 12px;
+    transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.dictation-option input {
+    position: absolute;
+    inset: 0;
+    cursor: pointer;
+    opacity: 0;
+}
+
+.dictation-option-mark {
+    display: inline-flex;
+    width: 28px;
+    height: 28px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: var(--dictation-muted);
+    font-size: 14px;
+    font-weight: 900;
+}
+
+.dictation-option-text {
+    position: relative;
+    z-index: 1;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.dictation-option:hover,
+.dictation-option:focus-within {
+    border-color: #fecaca;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.dictation-option.is-selected,
+.dictation-option:has(input:checked) {
+    border-color: var(--dictation-accent);
+    background: #fef2f2;
+}
+
+.dictation-option.is-selected .dictation-option-mark,
+.dictation-option:has(input:checked) .dictation-option-mark {
+    background: var(--dictation-accent);
+    color: #ffffff;
+}
+
+.dictation-answer-wrap {
+    margin-top: 14px;
+}
+
+.dictation-question-tools {
+    display: flex;
+    min-height: 34px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.dictation-answer-status {
+    color: var(--dictation-muted);
+    font-size: 14px;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.dictation-clear-answer {
+    border: 0;
+    background: transparent;
+    color: var(--dictation-accent);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 800;
+    padding: 6px 0;
+}
+
+.dictation-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.dictation-result-hero {
+    display: grid;
+    grid-template-columns: 148px minmax(0, 1fr);
+    gap: 24px;
+    align-items: center;
+}
+
+.dictation-score-ring {
+    display: flex;
+    width: 148px;
+    height: 148px;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 10px;
+    border-radius: 999px;
+    background:
+        radial-gradient(circle at center, var(--dictation-panel) 0 58%, transparent 59%),
+        conic-gradient(var(--dictation-accent) var(--score-angle), #e2e8f0 0);
+}
+
+.dictation-score-ring strong {
+    color: var(--dictation-accent);
+    font-size: 32px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.dictation-score-ring span {
+    color: var(--dictation-muted);
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.dictation-stats-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-top: 28px;
+}
+
+.dictation-stats-grid .is-good {
+    color: var(--dictation-success);
+}
+
+.dictation-stats-grid .is-bad {
+    color: var(--dictation-accent);
+}
+
+.dictation-result-actions {
+    justify-content: flex-start;
+}
+
+.dictation-review-list {
+    display: grid;
+    gap: 18px;
+    margin-top: 24px;
+}
+
+.dictation-review-item {
+    padding: 24px;
+}
+
+.dictation-review-item.is-correct {
+    border-left: 4px solid var(--dictation-success);
+}
+
+.dictation-review-item.is-wrong {
+    border-left: 4px solid var(--dictation-accent);
+}
+
+.dictation-review-head strong {
+    display: inline-flex;
+    margin-left: 8px;
+    color: var(--dictation-ink);
+    font-size: 16px;
+    line-height: 1;
+}
+
+.dictation-result-badge {
+    color: var(--dictation-muted);
+    font-size: 15px;
+    font-weight: 900;
+}
+
+.dictation-review-item.is-correct .dictation-result-badge {
+    color: var(--dictation-success);
+}
+
+.dictation-review-item.is-wrong .dictation-result-badge {
+    color: var(--dictation-accent);
+}
+
+.dictation-review-options {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 20px 0;
+}
+
+.dictation-review-option {
+    border: 1px solid var(--dictation-border);
+    border-radius: 8px;
+    background: var(--dictation-subtle);
+    color: var(--dictation-ink);
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+    padding: 12px 14px;
+}
+
+.dictation-review-option.is-answer {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+    color: var(--dictation-success);
+}
+
+.dictation-review-option.is-chosen {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: var(--dictation-accent-dark);
+}
+
+.dictation-answer-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 20px;
+}
+
+.dark .dictation-page {
+    --dictation-ink: #f8fafc;
+    --dictation-muted: #94a3b8;
+    --dictation-border: #334155;
+    --dictation-panel: #1e293b;
+    --dictation-subtle: #0f172a;
+    --dictation-accent: #f87171;
+    --dictation-accent-dark: #fca5a5;
+    --dictation-success: #34d399;
+}
+
+.dark .dictation-shell,
+.dark .dictation-start-panel,
+.dark .dictation-progress-panel,
+.dark .dictation-question,
+.dark .dictation-review-item,
+.dark .dictation-select,
+.dark .dictation-answer-input,
+.dark .dictation-secondary-button,
+.dark .dictation-back-button,
+.dark .dictation-question-dot,
+.dark .dictation-option {
+    background-color: var(--dictation-panel);
+}
+
+.dark .dictation-kicker,
+.dark .dictation-type-label,
+.dark .dictation-option.is-selected,
+.dark .dictation-option:has(input:checked),
+.dark .dictation-question-dot.is-answered:not(.is-active),
+.dark .dictation-alert,
+.dark .dictation-empty,
+.dark .dictation-ttl-notice.is-expired,
+.dark .dictation-review-option.is-chosen {
+    border-color: rgba(248, 113, 113, 0.36);
+    background: rgba(248, 113, 113, 0.12);
+}
+
+.dark .dictation-review-option.is-answer {
+    border-color: rgba(52, 211, 153, 0.34);
+    background: rgba(52, 211, 153, 0.12);
+}
+
+.dark .dictation-select,
+.dark .dictation-answer-input {
+    color: var(--dictation-ink);
+}
+
+.dark .dictation-progress-track {
+    background: #334155;
+}
+
+.dark .dictation-score-ring {
+    background:
+        radial-gradient(circle at center, var(--dictation-panel) 0 58%, transparent 59%),
+        conic-gradient(var(--dictation-accent) var(--score-angle), #334155 0);
+}
+
+@media (max-width: 768px) {
+    .dictation-page {
+        max-width: none;
+    }
+
+    .dictation-shell {
+        padding: 16px;
+    }
+
+    .dictation-home {
+        min-height: auto;
+    }
+
+    .dictation-home-grid,
+    .dictation-result-hero,
+    .dictation-stats-grid,
+    .dictation-review-options,
+    .dictation-answer-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .dictation-home-title h1,
+    .dictation-topbar h1,
+    .dictation-result-title h1 {
+        font-size: 30px;
+    }
+
+    .dictation-topbar {
+        grid-template-columns: 48px minmax(0, 1fr);
+    }
+
+    .dictation-timer {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        text-align: left;
+    }
+
+    .dictation-question {
+        min-height: 0;
+        padding: 16px;
+    }
+
+    .dictation-prompt {
+        font-size: 21px;
+        padding: 14px 16px;
+    }
+
+    .dictation-actions,
+    .dictation-result-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .dictation-score-ring {
+        width: 136px;
+        height: 136px;
+    }
+}

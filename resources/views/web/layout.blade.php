@@ -65,12 +65,14 @@
 
 <body class="text-base bg-gray-50 dark:bg-slate-900 dark:text-slate-100">
     <x-navbar></x-navbar>
-    <div class="max-w-[85rem] w-full mx-auto px-4 py-8 md:flex md:space-x-4">
+    <div class="max-w-[85rem] w-full mx-auto px-4 @hasSection('full_width') py-4 @else py-8 md:flex md:space-x-4 @endif">
         <!-- 主体内容 占比 80% -->
-        <div class="main sm:w-full md:w-8/12">
+        <div class="main sm:w-full @hasSection('full_width') md:w-full @else md:w-8/12 @endif">
             @yield('content')
         </div>
 
+        @hasSection('full_width')
+        @else
         <!-- 侧边栏 占比 20% -->
         <div class="sidebar sm:w-full md:w-4/12 relative pt-8 md:pt-0">
             <div class="sticky top-24">
@@ -82,6 +84,7 @@
                 </script> --}}
             </div>
         </div>
+        @endif
     </div>
     <footer class="max-w-[85rem] w-full mx-auto px-4 py-8 flex justify-between items-center text-sm text-gray-500 dark:text-gray-400">
         <p class="">
