@@ -9,6 +9,7 @@ class QuestionInstantiator
     public function __construct(
         private AnswerNormalizer $normalizer,
         private DictationTokenCodec $tokenCodec,
+        private CharacterOptionsGenerator $optionsGenerator,
     ) {}
 
     /**
@@ -22,6 +23,8 @@ class QuestionInstantiator
             QuestionGenerator::TYPE_AUTHOR_CHOICE,
             QuestionGenerator::TYPE_ANNOTATION_MEANING,
             QuestionGenerator::TYPE_POEM_SOURCE => $this->instantiateChoice($question),
+            QuestionGenerator::TYPE_NEXT,
+            QuestionGenerator::TYPE_PREVIOUS => $this->instantiateLineWithOptions($question),
             default => $this->instantiateStatic($question),
         };
     }
@@ -37,6 +40,8 @@ class QuestionInstantiator
             QuestionGenerator::TYPE_AUTHOR_CHOICE,
             QuestionGenerator::TYPE_ANNOTATION_MEANING,
             QuestionGenerator::TYPE_POEM_SOURCE => $this->choiceFromToken($question, $token),
+            QuestionGenerator::TYPE_NEXT,
+            QuestionGenerator::TYPE_PREVIOUS => $this->lineWithOptionsFromToken($question, $token),
             default => $this->instantiateStatic($question),
         };
 
@@ -62,6 +67,35 @@ class QuestionInstantiator
             'answer' => $answer,
             'accepted_answers' => $question->accepted_answers ?: [$answer],
             'instance_metadata' => [],
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function instantiateLineWithOptions(Question $question): array
+    {
+        $answer = (string) ($question->answer ?? '');
+        $poemContent = $this->getPoemContent($question);
+
+        // 为上下句生成候选字（15-20个）
+        $answerLength = mb_strlen($answer, 'UTF-8');
+        $targetCount = $answerLength + max(10, $answerLength * 2);
+        $options = $this->optionsGenerator->generate($answer, $poemContent, $targetCount);
+
+        return $this->baseInstance($question, [
+            'prompt' => $question->prompt,
+            'answer' => $answer,
+            'accepted_answers' => $question->accepted_answers ?: [$answer],
+            'options' => $options,
+            'instance_token' => $this->token([
+                'qid' => $question->id,
+                'type' => $question->question_type,
+                'options' => $options,
+            ]),
+            'instance_metadata' => [
+                'options' => $options,
+            ],
         ]);
     }
 
@@ -135,20 +169,27 @@ class QuestionInstantiator
         $sentence = $this->templateSentence($question);
         $acceptedAnswers = $this->blankAcceptedAnswers($question, $positions);
         $answer = $this->textAtPositions($sentence, $positions);
+        $poemContent = $this->getPoemContent($question);
+
+        // 为填空题生成候选字（8-12个）
+        $options = $this->optionsGenerator->generate($answer, $poemContent, 12);
 
         return $this->baseInstance($question, [
             'prompt' => $this->blankPrompt($sentence, $positions),
             'answer' => $answer,
             'accepted_answers' => $acceptedAnswers ?: [$answer],
             'answer_hint' => count($positions).'个字',
+            'options' => $options,
             'instance_token' => $this->token([
                 'qid' => $question->id,
                 'type' => $question->question_type,
                 'positions' => $positions,
+                'options' => $options,
             ]),
             'instance_metadata' => [
                 'positions' => $positions,
                 'template_prompt' => $sentence,
+                'options' => $options,
             ],
         ]);
     }
@@ -169,6 +210,36 @@ class QuestionInstantiator
         }
 
         return $this->blankInstance($question, $positions);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function lineWithOptionsFromToken(Question $question, ?string $token): ?array
+    {
+        $payload = $this->parseToken($question, $token);
+        if ($payload === null) {
+            // 如果没有 token，直接重新生成
+            return $this->instantiateLineWithOptions($question);
+        }
+
+        // 如果有保存的 options，使用保存的（保持一致性）
+        if (isset($payload['options']) && is_array($payload['options'])) {
+            $answer = (string) ($question->answer ?? '');
+
+            return $this->baseInstance($question, [
+                'prompt' => $question->prompt,
+                'answer' => $answer,
+                'accepted_answers' => $question->accepted_answers ?: [$answer],
+                'options' => array_values($payload['options']),
+                'instance_token' => $token,
+                'instance_metadata' => [
+                    'options' => array_values($payload['options']),
+                ],
+            ]);
+        }
+
+        return $this->instantiateLineWithOptions($question);
     }
 
     /**
@@ -459,5 +530,20 @@ class QuestionInstantiator
         }
 
         return array_values(array_unique($answers));
+    }
+
+    /**
+     * 获取诗词完整内容（用于生成候选字）
+     */
+    private function getPoemContent(Question $question): string
+    {
+        $poem = $question->relationLoaded('poem') ? $question->getRelation('poem') : null;
+
+        if ($poem && isset($poem->content)) {
+            return (string) $poem->content;
+        }
+
+        // 如果没有关联诗词，使用题目中的句子
+        return $this->templateSentence($question);
     }
 }

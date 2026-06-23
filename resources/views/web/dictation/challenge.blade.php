@@ -133,9 +133,7 @@
                 </div>
                 @endif
 
-                <div class="dictation-prompt">
-                    {!! $renderDictationPrompt($question) !!}
-                </div>
+                <div class="dictation-prompt">{!! $renderDictationPrompt($question) !!}</div>
 
                 <input type="hidden" name="answers[{{ $index }}][question_id]" value="{{ $question['question_id'] }}">
                 @if (!empty($question['instance_token']))
@@ -143,15 +141,29 @@
                 @endif
 
                 @if (!empty($question['options']) && is_array($question['options']))
-                <div class="dictation-options">
-                    @foreach ($question['options'] as $option)
-                    <label class="dictation-option">
-                        <input type="radio" name="answers[{{ $index }}][user_answer]" value="{{ $option }}">
-                        <span class="dictation-option-mark">{{ chr(65 + $loop->index) }}</span>
-                        <span class="dictation-option-text">{{ $option }}</span>
-                    </label>
-                    @endforeach
-                </div>
+                    @if (in_array($question['type'], ['blank', 'next', 'previous']))
+                    {{-- 逐字选择模式（填空题、上下句） --}}
+                    <div class="dictation-selected-answer">
+                        <div class="dictation-selected-answer-text" data-selected-display></div>
+                    </div>
+                    <div class="dictation-char-options" data-char-options>
+                        @foreach ($question['options'] as $char)
+                        <button type="button" class="dictation-char-option" data-char-value="{{ $char }}">{{ $char }}</button>
+                        @endforeach
+                    </div>
+                    <input type="hidden" name="answers[{{ $index }}][user_answer]" data-char-answer-input>
+                    @else
+                    {{-- 普通选择题模式（作者、释义、出处、排序） --}}
+                    <div class="dictation-options">
+                        @foreach ($question['options'] as $option)
+                        <label class="dictation-option">
+                            <input type="radio" name="answers[{{ $index }}][user_answer]" value="{{ $option }}">
+                            <span class="dictation-option-mark">{{ chr(65 + $loop->index) }}</span>
+                            <span class="dictation-option-text">{{ $option }}</span>
+                        </label>
+                        @endforeach
+                    </div>
+                    @endif
                 @else
                 <div class="dictation-answer-wrap">
                     <input type="text" name="answers[{{ $index }}][user_answer]" autocomplete="off" class="dictation-answer-input" placeholder="输入答案">
@@ -241,6 +253,7 @@
             const value = answerValue(question);
             const radioInputs = Array.from(question.querySelectorAll('input[type="radio"][name$="[user_answer]"]'));
             const hasChoices = radioInputs.length > 0;
+            const hasCharOptions = question.querySelector('[data-char-options]') !== null;
             const statusEl = question.querySelector('[data-answer-status]');
             const clearButton = question.querySelector('[data-clear-answer]');
 
@@ -250,9 +263,13 @@
             });
 
             if (statusEl) {
-                statusEl.textContent = hasChoices
-                    ? (value ? `已选择：${value}` : '未选择')
-                    : `${value.length} 字`;
+                if (hasCharOptions) {
+                    statusEl.textContent = value ? `已选择 ${value.length} 字` : '未选择';
+                } else if (hasChoices) {
+                    statusEl.textContent = value ? `已选择：${value}` : '未选择';
+                } else {
+                    statusEl.textContent = `${value.length} 字`;
+                }
             }
 
             if (clearButton) {
@@ -333,8 +350,55 @@
                         input.value = '';
                     }
                 });
+                // 清空逐字选择
+                const charButtons = question.querySelectorAll('[data-char-value]');
+                charButtons.forEach(btn => btn.classList.remove('is-selected'));
+                const selectedDisplay = question.querySelector('[data-selected-display]');
+                if (selectedDisplay) {
+                    selectedDisplay.textContent = '';
+                }
                 showQuestion(currentIndex);
             });
+
+            // 逐字选择交互
+            const charOptions = question.querySelector('[data-char-options]');
+            if (charOptions) {
+                const charButtons = charOptions.querySelectorAll('[data-char-value]');
+                const answerInput = question.querySelector('[data-char-answer-input]');
+                const selectedDisplay = question.querySelector('[data-selected-display]');
+                let selectedChars = [];
+
+                charButtons.forEach((button) => {
+                    button.addEventListener('click', () => {
+                        const char = button.dataset.charValue;
+
+                        if (button.classList.contains('is-selected')) {
+                            // 取消选择：从数组中移除该字符的最后一次出现
+                            const lastIndex = selectedChars.lastIndexOf(char);
+                            if (lastIndex > -1) {
+                                selectedChars.splice(lastIndex, 1);
+                            }
+                            button.classList.remove('is-selected');
+                        } else {
+                            // 选择字符
+                            selectedChars.push(char);
+                            button.classList.add('is-selected');
+                        }
+
+                        // 更新显示和隐藏输入框
+                        const answer = selectedChars.join('');
+                        if (answerInput) {
+                            answerInput.value = answer;
+                            answerInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                        if (selectedDisplay) {
+                            selectedDisplay.textContent = answer || '请选择字';
+                        }
+
+                        showQuestion(currentIndex);
+                    });
+                });
+            }
         });
 
         prevButton?.addEventListener('click', () => showQuestion(currentIndex - 1));

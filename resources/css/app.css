@@ -542,7 +542,7 @@ body {
     border-radius: 8px;
     background: var(--dictation-subtle);
     color: var(--dictation-ink);
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 700;
     line-height: 1;
     overflow-wrap: anywhere;
@@ -637,6 +637,73 @@ body {
 
 .dictation-answer-wrap {
     margin-top: 14px;
+}
+
+.dictation-char-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+    justify-content: center;
+}
+
+.dictation-char-option {
+    display: inline-flex;
+    width: 48px;
+    height: 48px;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--dictation-border);
+    border-radius: 8px;
+    background: #ffffff;
+    color: var(--dictation-ink);
+    cursor: pointer;
+    font-size: 20px;
+    font-weight: 700;
+    transition: all 160ms ease;
+    user-select: none;
+}
+
+.dictation-char-option:hover {
+    border-color: #fecaca;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+    transform: translateY(-2px);
+}
+
+.dictation-char-option:active {
+    transform: translateY(0);
+}
+
+.dictation-char-option.is-selected {
+    border-color: var(--dictation-accent);
+    background: #fef2f2;
+    color: var(--dictation-accent);
+}
+
+.dictation-char-option.is-disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.dictation-selected-answer {
+    margin-top: 14px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    background: var(--dictation-subtle);
+    text-align: center;
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dictation-selected-answer-text {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--dictation-ink);
+    letter-spacing: 0.15em;
+    line-height: 1.5;
 }
 
 .dictation-question-tools {
