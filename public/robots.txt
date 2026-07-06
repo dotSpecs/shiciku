@@ -1,2 +1,4 @@
 User-agent: *
 Disallow:
+
+Sitemap: https://ku.meirishici.com/sitemap/sitemap.xml

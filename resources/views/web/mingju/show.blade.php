@@ -3,16 +3,6 @@
 @php
     $displayDynasty = $mingju->dynasty?->name ?: $mingju->chaodai;
     $displayAuthor = $mingju->author?->name ?: $mingju->author_name;
-@endphp
-
-@section('title', $mingju->name . '的出处、译文、注释、赏析' . ($displayDynasty ? ' - 【' . $displayDynasty . '】' : '') . ($displayAuthor ?: ''))
-
-@section('keywords', $mingju->name . ',' . ($displayAuthor ? $displayAuthor . ',' : '') . ($mingju->source ? $mingju->source . ',' : ''))
-@section('description', $mingju->name . '的出处、译文、注释、赏析,' . ($displayAuthor ? $displayAuthor . ',' : '') . ($mingju->source ? '出自' . $mingju->source : ''))
-
-@section('content')
-
-@php
     $poem = $mingju->sourcePoem;
     $article = $mingju->sourceBookArticle;
     $poemDisplayDynasty = $poem ? ($poem->dynasty?->name ?: $poem->chaodai) : null;
@@ -24,7 +14,52 @@
     } else {
         $sourceUrl = null;
     }
+    $seoParts = array_filter([
+        $mingju->name,
+        $displayAuthor ? $displayAuthor . '名句' : null,
+        $mingju->source ? '出自《' . $mingju->source . '》' : null,
+        $mingju->yiwen ? '译文：' . trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags($mingju->yiwen), ENT_QUOTES, 'UTF-8'))) : null,
+    ]);
+    $seoDescription = mb_substr(implode('，', $seoParts), 0, 160);
+    $structuredData = [
+        '@context' => 'https://schema.org',
+        '@graph' => [
+            [
+                '@type' => 'BreadcrumbList',
+                'itemListElement' => [
+                    ['@type' => 'ListItem', 'position' => 1, 'name' => '首页', 'item' => route('index')],
+                    ['@type' => 'ListItem', 'position' => 2, 'name' => '名句', 'item' => route('mingju.index')],
+                    ['@type' => 'ListItem', 'position' => 3, 'name' => $mingju->name, 'item' => route('mingju.show', $mingju->mingju_id)],
+                ],
+            ],
+            [
+                '@type' => 'Quotation',
+                'text' => $mingju->name,
+                'author' => $displayAuthor ? ['@type' => 'Person', 'name' => $displayAuthor] : null,
+                'isPartOf' => $mingju->source ? [
+                    '@type' => 'CreativeWork',
+                    'name' => $mingju->source,
+                    'url' => $sourceUrl,
+                ] : null,
+                'inLanguage' => 'zh-CN',
+                'description' => $seoDescription,
+                'url' => route('mingju.show', $mingju->mingju_id),
+            ],
+        ],
+    ];
 @endphp
+
+@section('title', $mingju->name . '的出处、译文、注释、赏析' . ($displayDynasty ? ' - 【' . $displayDynasty . '】' : '') . ($displayAuthor ?: ''))
+
+@section('keywords', $mingju->name . ',' . ($displayAuthor ? $displayAuthor . ',' : '') . ($mingju->source ? $mingju->source . ',' : ''))
+@section('description', $seoDescription)
+@section('og_description', $seoDescription)
+
+@section('seo')
+<script type="application/ld+json">{!! json_encode($structuredData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}</script>
+@endsection
+
+@section('content')
 
 <div class="mingju card mb-8">
     <h1 class="card-title text-xl">{{ $mingju->name }}</h1>

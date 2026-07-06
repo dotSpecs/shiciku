@@ -11,12 +11,16 @@ class EsQueryBuilder
      * @param  array<string, array{phrase:int, match:int}>  $fields  字段权重映射
      * @param  string|null  $orderField  高斯衰减字段（越小越靠前的 popularity 信号，如 'order' / 'book_order'）
      * @param  int|null  $authorBoost  当 q 与 `author` keyword 字段精确匹配时叠加的 boost
+     * @param  int  $orderWeight  popularity 信号权重，应低于精确短语命中的主相关性权重
+     * @param  int  $priorityWeight  高优先级内容额外权重，用于让经典内容压过冷门标题精确命中
      */
     public static function build(
         string $q,
         array $fields,
         ?string $orderField = null,
         ?int $authorBoost = null,
+        int $orderWeight = 500,
+        int $priorityWeight = 0,
     ): array {
         $should = [];
         $parts = self::phraseParts($q);
@@ -24,7 +28,10 @@ class EsQueryBuilder
         foreach ($fields as $field => $boosts) {
             $should[] = [
                 'constant_score' => [
-                    'filter' => ['match_phrase' => [$field => ['query' => $q]]],
+                    'filter' => ['match_phrase' => [$field => [
+                        'query' => $q,
+                        'analyzer' => 'ik_max_word',
+                    ]]],
                     'boost' => $boosts['phrase'],
                 ],
             ];
@@ -35,7 +42,10 @@ class EsQueryBuilder
                         'filter' => [
                             'bool' => [
                                 'must' => array_map(
-                                    fn (string $part) => ['match_phrase' => [$field => ['query' => $part]]],
+                                    fn (string $part) => ['match_phrase' => [$field => [
+                                        'query' => $part,
+                                        'analyzer' => 'ik_max_word',
+                                    ]]],
                                     $parts,
                                 ),
                             ],
@@ -52,7 +62,10 @@ class EsQueryBuilder
 
                 $should[] = [
                     'constant_score' => [
-                        'filter' => ['match_phrase' => [$field => ['query' => $part]]],
+                        'filter' => ['match_phrase' => [$field => [
+                            'query' => $part,
+                            'analyzer' => 'ik_max_word',
+                        ]]],
                         'boost' => $boosts['phrase'] * self::lengthFactor($part),
                     ],
                 ];
@@ -63,7 +76,6 @@ class EsQueryBuilder
                     $field => [
                         'query' => $q,
                         'boost' => $boosts['match'],
-                        'operator' => 'and',
                         'minimum_should_match' => '75%',
                     ],
                 ],
@@ -87,17 +99,26 @@ class EsQueryBuilder
             return $bool;
         }
 
+        $functions = [
+            [
+                'gauss' => [
+                    $orderField => ['origin' => 0, 'scale' => 5000, 'decay' => 0.5],
+                ],
+                'weight' => $orderWeight,
+            ],
+        ];
+
+        if ($priorityWeight > 0) {
+            $functions[] = [
+                'filter' => ['range' => [$orderField => ['lte' => 10000]]],
+                'weight' => $priorityWeight,
+            ];
+        }
+
         return [
             'function_score' => [
                 'query' => $bool,
-                'functions' => [
-                    [
-                        'gauss' => [
-                            $orderField => ['origin' => 0, 'scale' => 5000, 'decay' => 0.5],
-                        ],
-                        'weight' => 500,
-                    ],
-                ],
+                'functions' => $functions,
                 'score_mode' => 'sum',
                 'boost_mode' => 'sum',
             ],

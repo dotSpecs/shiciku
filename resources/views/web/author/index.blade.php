@@ -1,13 +1,14 @@
 @extends('web.layout')
 
-@section('title', '作者列表' . ($dynasty ? ' - ' . $dynasty->name : '') . ' - 第' . $page . '页')
+@php
+    $pageHeading = '作者列表' . ($dynasty ? ' - ' . $dynasty->name : '');
+    $pageTitle = $pageHeading . ($page > 1 ? ' - 第' . $page . '页' : '');
+@endphp
+
+@section('title', $pageTitle)
 
 @section('keywords', '作者列表,')
-@section('description', '作者列表' . ($dynasty ? ' - ' . $dynasty->name : '') . ' - 第' . $page . '页,')
-
-@section('seo')
-
-@endsection
+@section('description', $pageTitle . ',')
 
 @section('content')
 

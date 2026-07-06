@@ -3,13 +3,42 @@
 @php
     $displayDynasty = $poem->dynasty?->name ?: $poem->chaodai;
     $displayAuthor = $poem->author?->name ?: $poem->author_name;
+    $plainContent = trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags($poem->content), ENT_QUOTES, 'UTF-8')));
+    $seoDescription = $poem->name . ($displayAuthor ? '，' . $displayAuthor . '作品' : '') . ($displayDynasty ? '，' . $displayDynasty : '') . '。' . mb_substr($plainContent, 0, 90);
+    $structuredData = [
+        '@context' => 'https://schema.org',
+        '@graph' => [
+            [
+                '@type' => 'BreadcrumbList',
+                'itemListElement' => [
+                    ['@type' => 'ListItem', 'position' => 1, 'name' => '首页', 'item' => route('index')],
+                    ['@type' => 'ListItem', 'position' => 2, 'name' => '诗词', 'item' => route('poem.index')],
+                    ['@type' => 'ListItem', 'position' => 3, 'name' => $poem->name, 'item' => route('poem.show', poem_slug($poem))],
+                ],
+            ],
+            [
+                '@type' => 'CreativeWork',
+                'name' => $poem->name,
+                'headline' => $poem->name,
+                'author' => $displayAuthor ? ['@type' => 'Person', 'name' => $displayAuthor] : null,
+                'inLanguage' => 'zh-CN',
+                'description' => $seoDescription,
+                'text' => $plainContent,
+                'url' => route('poem.show', poem_slug($poem)),
+            ],
+        ],
+    ];
 @endphp
 
 @section('title', $poem->name . '的原文、注释、翻译、赏析、序' . ($displayDynasty ? ' - 【' . $displayDynasty .'】' : '') . ($displayAuthor ?: ''))
 
 @section('keywords', $poem->name . ',' . ($displayDynasty ? $displayDynasty . ',' : '') . ($displayAuthor ? $displayAuthor . ',' : ''))
-@section('description', $poem->name . '的原文、注释、翻译、赏析、序,' . ($displayDynasty ?: '') . ($displayAuthor ? $displayAuthor . '的' : '') . '诗词,')
+@section('description', $seoDescription)
+@section('og_description', $seoDescription)
 
+@section('seo')
+<script type="application/ld+json">{!! json_encode($structuredData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}</script>
+@endsection
 
 @section('content')
 <div class="poem card mb-8">

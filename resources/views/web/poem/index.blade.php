@@ -1,11 +1,18 @@
 @extends('web.layout')
 
-@section('title', '诗词列表' . ($tag ? ' - 所属合集：' . $tag->name .'的诗词' : '') . ($author ? ' - 作者：' . $author->name . '的诗词' : '') . ($dynasty ? ' - 朝代：' . $dynasty->name . '的诗词' : '') . ' - 第' . $page . '页')
+@php
+    $pageHeading = '诗词列表' . ($tag ? ' - 所属合集：' . $tag->name .'的诗词' : '') . ($author ? ' - 作者：' . $author->name . '的诗词' : '') . ($dynasty ? ' - 朝代：' . $dynasty->name . '的诗词' : '');
+    $pageTitle = $pageHeading . ($page > 1 ? ' - 第' . $page . '页' : '');
+@endphp
+
+@section('title', $pageTitle)
 
 @section('keywords', '诗词列表,' . ($tag ? '合集：'.$tag->name.',' : '') . ($author ? $author->name.'的诗词,' : '') . ($dynasty ? $dynasty->name.'的诗词,' : ''))
-@section('description', '诗词列表' . ($tag ? ' - 合集：' . $tag->name : '') . ($author ? ' - 作者：' . $author->name : '') . ($dynasty ? ' - 朝代：' . $dynasty->name : '') . ' - 第' . $page . '页,')
+@section('description', $pageTitle . ',')
 
 @section('content')
+
+<h1 class="card-title mb-4">{{ $pageHeading }}</h1>
 
 <div class="card mb-8 ">
 
@@ -68,11 +75,11 @@
 <div class="mx-auto">
     @foreach ($poems as $poem)
     <div class="poem card mb-8">
-        <h1 class="poem-name card-title">
+        <h2 class="poem-name card-title">
             <a href="{{ route('poem.show', poem_slug($poem)) }}" class="link">
                 {{ $poem->name }}
             </a>
-        </h1>
+        </h2>
         <div class="card-content">
             <div class="poem-info my-2 secondary">
                 @if($poem->dynasty)

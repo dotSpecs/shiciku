@@ -3,14 +3,22 @@
 @php
     $typeNames = ['poem' => '诗词', 'mingju' => '名句', 'author' => '作者', 'book' => '古籍'];
     $typeName = $typeNames[$type] ?? '诗词';
+    $pageHeading = '与 “' . $query . '” 相关的' . $typeName . '搜索结果';
+    $pageTitle = $pageHeading . ($page > 1 ? ' - 第 ' . $page . ' 页' : '');
 @endphp
 
-@section('title', '与 “' . $query . '” 相关的' . $typeName . '搜索结果 - 第 ' . $page . ' 页')
+@section('title', $pageTitle)
 
 @section('keywords', $typeName . '搜索,' . $query . ',')
-@section('description', '与 “' . $query . '” 相关的' . $typeName . '搜索结果 - 第 ' . $page . ' 页')
+@section('description', $pageTitle)
+
+@section('seo')
+<meta name="robots" content="noindex,follow">
+@endsection
 
 @section('content')
+
+<h1 class="card-title mb-4">{{ $pageHeading }}</h1>
 
 <div class="card text-center mb-8">
     @foreach ($typeNames as $t => $n)
@@ -170,15 +178,17 @@
         $highlight = $poem->search_highlight ?? [];
         $poemName = $highlight['name'][0] ?? $poem->name;
         $contentSnippets = $highlight['content'] ?? [];
+        $poemSummary = !empty($contentSnippets) ? implode(' …… ', $contentSnippets) : $poem->content;
+        $poemSummary = preg_replace('/^(?:\s|&nbsp;|<br\s*\/?>)+/iu', '', $poemSummary);
     @endphp
     <div class="poem card mb-8">
-        <h1 class="poem-name card-title">
+        <h2 class="poem-name card-title">
             <a href="{{ route('poem.show', poem_slug($poem)) }}" class="link search-highlight">
                 {!! $poemName !!}
             </a>
-        </h1>
+        </h2>
         <div class="card-content">
-            <div class="poem-info my-2 secondary">
+            <div class="poem-info mt-2 mb-4 secondary">
                 @if($poem->dynasty)
                 <a href="{{ route('poem.index', ['dynasty_id' => $poem->dynasty->id]) }}" class="link secondary">
                     {{ $poem->dynasty->name }}
@@ -195,11 +205,7 @@
                 @endif
             </div>
             <div class="poem-content escape-html line-clamp-3 search-highlight">
-                @if(!empty($contentSnippets))
-                    {!! implode(' …… ', $contentSnippets) !!}
-                @else
-                    {!! $poem->content !!}
-                @endif
+                {!! $poemSummary !!}
             </div>
         </div>
     </div>

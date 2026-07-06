@@ -1,7 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 
 <head>
+    @php
+        $canonicalQuery = collect(request()->query())
+            ->only(['page', 'query', 'type', 'tag_id', 'author_id', 'dynasty_id', 'class'])
+            ->filter(fn ($value) => filled($value))
+            ->reject(fn ($value, $key) => $key === 'page' && (string) $value === '1')
+            ->sortKeys()
+            ->all();
+        $canonicalUrl = request()->url() . ($canonicalQuery ? '?' . http_build_query($canonicalQuery, '', '&', PHP_QUERY_RFC3986) : '');
+    @endphp
     <meta charset="UTF-8">
     <title>@yield('title') - 古诗词文库</title>
     @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
@@ -19,29 +28,29 @@
     <meta name="baidu_union_verify" content="fdc73309de255e6b8c25cbf4db0e52de">
 
     <meta name="keywords" content="@yield('keywords')古诗词文库,古诗,诗词,古文,唐诗,宋词,古文,诗,词,曲,赋,文,诗人" />
-    <meta name="description" content="@yield('description')古诗词文库是一个古诗词、古文收录网站，目前已收录古诗词超60万首，作者2万余人。其中包含唐诗/宋词/元曲/诸子百家等多种著作，内容持续优化更新中。" />
+    <meta name="description" content="@hasSection('description')@yield('description')@else古诗词文库是一个古诗词、古文收录网站，目前已收录古诗词超60万首，作者2万余人。其中包含唐诗/宋词/元曲/诸子百家等多种著作，内容持续优化更新中。@endif" />
 
-    <link rel="canonical" href="{{ url()->current() }}">
+    <link rel="canonical" href="{{ $canonicalUrl }}">
     <link rel="shortcut icon" href="https://cdn.meirishici.com/meirishici-favicon.ico" />
     <link rel="apple-touch-icon" href="https://cdn.meirishici.com/assets/images/logo/shiciwenku-mini.png" sizes="144x144" />
 
     <!-- Facebook & LinkedIn Open Graph Tags -->
     <meta property="og:title" content="@yield('title') - 古诗词文库" />
-    <meta property="og:url" content="{{ url()->current() }}" />
+    <meta property="og:url" content="{{ $canonicalUrl }}" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="古诗词文库" />
     <meta property="og:image" content="https://cdn.meirishici.com/assets/images/logo/shiciwenku.png" />
-    <meta property="og:description" content="古诗词文库是一个古诗词、古文收录网站，目前已收录古诗词超60万首，作者2万余人。其中包含唐诗/宋词/元曲/诸子百家等多种著作，内容持续优化更新中。" />
+    <meta property="og:description" content="@hasSection('og_description')@yield('og_description')@else古诗词文库是一个古诗词、古文收录网站，目前已收录古诗词超60万首，作者2万余人。其中包含唐诗/宋词/元曲/诸子百家等多种著作，内容持续优化更新中。@endif" />
     <!-- Twitter Card Tags -->
     <meta property="twitter:title" content="@yield('title') - 古诗词文库" />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:site" content="@NeverMore2oo8" />
     <meta name="twitter:image" content="https://cdn.meirishici.com/assets/images/logo/shiciwenku.png" />
-    <meta name="twitter:description" content="古诗词文库是一个古诗词、古文收录网站，目前已收录古诗词超60万首，作者2万余人。其中包含唐诗/宋词/元曲/诸子百家等多种著作，内容持续优化更新中。" />
+    <meta name="twitter:description" content="@hasSection('og_description')@yield('og_description')@else古诗词文库是一个古诗词、古文收录网站，目前已收录古诗词超60万首，作者2万余人。其中包含唐诗/宋词/元曲/诸子百家等多种著作，内容持续优化更新中。@endif" />
     <!-- Weibo Meta Tags -->
     <meta itemprop="name" content="@yield('title') - 古诗词文库" />
     <meta itemprop="image" content="https://cdn.meirishici.com/assets/images/logo/shiciwenku.png" />
-    <meta itemprop="description" content="古诗词文库是一个古诗词、古文收录网站，目前已收录古诗词超60万首，作者2万余人。其中包含唐诗/宋词/元曲/诸子百家等多种著作，内容持续优化更新中。" />
+    <meta itemprop="description" content="@hasSection('og_description')@yield('og_description')@else古诗词文库是一个古诗词、古文收录网站，目前已收录古诗词超60万首，作者2万余人。其中包含唐诗/宋词/元曲/诸子百家等多种著作，内容持续优化更新中。@endif" />
 
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6074386496019881" crossorigin="anonymous"></script>
     <!-- Google tag (gtag.js) -->

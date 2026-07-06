@@ -117,12 +117,50 @@
     $bottomSupplements = $article->supplements
         ->reject(fn ($metadata) => in_array(trim((string) $metadata->name), $inlineSupplementNames, true))
         ->values();
+    $articleFullTitle = $article->book->name . '·' . ($article->chapter && $article->chapter->name ? $article->chapter->name . '·' : '') . $article->name;
+    $plainContent = trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags($article->content), ENT_QUOTES, 'UTF-8')));
+    $seoDescription = $articleFullTitle . ($displayAuthor ? '，' . $displayAuthor . '作品' : '') . '。' . mb_substr($plainContent, 0, 90);
+    $articleUrl = route('book.article', ['book_id' => $article->book->book_id, 'article_id' => $article->article_id]);
+    $structuredData = [
+        '@context' => 'https://schema.org',
+        '@graph' => [
+            [
+                '@type' => 'BreadcrumbList',
+                'itemListElement' => [
+                    ['@type' => 'ListItem', 'position' => 1, 'name' => '首页', 'item' => route('index')],
+                    ['@type' => 'ListItem', 'position' => 2, 'name' => '古籍', 'item' => route('book.index')],
+                    ['@type' => 'ListItem', 'position' => 3, 'name' => $article->book->name, 'item' => route('book.show', $article->book->book_id)],
+                    ['@type' => 'ListItem', 'position' => 4, 'name' => $article->name, 'item' => $articleUrl],
+                ],
+            ],
+            [
+                '@type' => 'Article',
+                'name' => $articleFullTitle,
+                'headline' => $articleFullTitle,
+                'author' => $displayAuthor ? ['@type' => 'Person', 'name' => $displayAuthor] : null,
+                'isPartOf' => [
+                    '@type' => 'Book',
+                    'name' => $article->book->name,
+                    'url' => route('book.show', $article->book->book_id),
+                ],
+                'inLanguage' => 'zh-CN',
+                'description' => $seoDescription,
+                'articleBody' => $plainContent,
+                'url' => $articleUrl,
+            ],
+        ],
+    ];
 @endphp
 
-@section('title', $article->book->name . '·' . ($article->chapter && $article->chapter->name ? $article->chapter->name. '·' : '') . $article->name . '的原文、注释、翻译、赏析')
+@section('title', $articleFullTitle . '的原文、注释、翻译、赏析')
 
 @section('keywords', $article->book->name . ',' . ($displayAuthor ? $displayAuthor . ',' : '') . ($article->chapter && $article->chapter->name ? $article->chapter->name. ',' : '') . $article->name . ',')
-@section('description', $article->book->name . '·' . ($article->chapter && $article->chapter->name ? $article->chapter->name. '·' : '') . $article->name . '的原文、注释、翻译、赏析,' . ($displayAuthor ? $displayAuthor . ',' : ''))
+@section('description', $seoDescription)
+@section('og_description', $seoDescription)
+
+@section('seo')
+<script type="application/ld+json">{!! json_encode($structuredData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}</script>
+@endsection
 
 @section('content')
 <div class="card mb-8">

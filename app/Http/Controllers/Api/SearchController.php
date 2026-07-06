@@ -49,9 +49,9 @@ class SearchController extends Controller
     private function searchPoems(string $q, int $page): JsonResponse
     {
         $esQuery = EsQueryBuilder::build($q, [
-            'content' => ['phrase' => 90, 'match' => 5],
-            'name' => ['phrase' => 200, 'match' => 2],
-        ], orderField: 'order', authorBoost: 150);
+            'content' => ['phrase' => 1200, 'match' => 8],
+            'name' => ['phrase' => 2000, 'match' => 4],
+        ], orderField: 'order', authorBoost: 1500, orderWeight: 80, priorityWeight: 900);
 
         $paginator = Poem::searchQuery($esQuery)
             ->highlightRaw($this->poemHighlight())

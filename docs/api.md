@@ -446,10 +446,22 @@
       "chaodai": "唐代",
       "prompt": "床前__光",
       "answer_hint": "2个字",
+      "options": ["明", "月", "床", "光", "前", "疑", "是", "地", "霜", "举", "头", "望"],
       "instance_token": "encrypted-instance-token"
     },
     {
       "question_id": 124,
+      "type": "next",
+      "poem_id": "chunxiao",
+      "poem_name": "春晓",
+      "author_name": "孟浩然",
+      "chaodai": "唐代",
+      "prompt": "春眠不觉晓",
+      "options": ["处", "处", "闻", "啼", "鸟", "夜", "来", "风", "雨", "声", "花", "落", "知", "多", "少"],
+      "instance_token": "encrypted-instance-token"
+    },
+    {
+      "question_id": 125,
       "type": "author_choice",
       "poem_id": "chunxiao",
       "poem_name": "春晓",
@@ -462,6 +474,39 @@
   ]
 }
 ```
+
+**题目字段说明**
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `question_id` | int | 题目 ID |
+| `type` | string | 题目类型：`blank`（填空）/ `next`（下一句）/ `previous`（上一句）/ `author_choice`（作者选择）/ `annotation_meaning`（释义选择）/ `poem_source`（出处选择）/ `sentence_order`（排序） |
+| `poem_id` | string | 诗词 slug |
+| `poem_name` | string | 诗词名称 |
+| `author_name` | string | 作者名 |
+| `chaodai` | string | 朝代 |
+| `prompt` | string | 题目提示文本 |
+| `answer_hint` | string \| null | 答案提示（如"2个字"），仅填空题有 |
+| `options` | array \| null | 候选项数组，根据题型不同有不同含义（见下表） |
+| `instance_token` | string | 题目实例 token，提交答案时必须原样带回 |
+
+**options 字段说明**
+
+| 题型 | options 内容 | 数量 | 说明 |
+|---|---|---|---|
+| `blank` | 候选字数组 | 8-12 个 | 包含正确答案字 + 干扰字（同诗其他字、高频字），完全打乱顺序 |
+| `next` / `previous` | 候选字数组 | 15-20 个 | 包含正确答案字（可能有重复字）+ 干扰字，完全打乱顺序 |
+| `author_choice` | 作者名数组 | 4 个 | 包含正确作者 + 3 个干扰作者 |
+| `annotation_meaning` | 释义数组 | 4 个 | 包含正确释义 + 3 个干扰释义 |
+| `poem_source` | 诗词名数组 | 4 个 | 包含正确出处 + 3 个干扰出处 |
+| `sentence_order` | 排序选项数组 | 4 个 | 如 `["A-B-C-D", "B-A-D-C", ...]` |
+
+**逐字选择模式（填空题和上下句）**
+
+- 前端应展示 `options` 中的所有字，让用户依次点击选择字来拼接答案
+- 用户可以重复选择同一个字（如"处处"需要选两次"处"）
+- 候选字已完全打乱顺序，正确答案不会连续出现
+- 最终提交时，将用户选择的字按顺序拼接成字符串作为 `user_answer`
 
 获取题目接口不返回标准答案。前端提交时必须原样带回每题的 `question_id` 和 `instance_token`。
 

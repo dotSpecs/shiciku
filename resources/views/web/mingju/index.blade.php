@@ -1,9 +1,14 @@
 @extends('web.layout')
 
-@section('title', '名句列表' . ($tag ? ' - 合集：' . $tag->name : '') . ' - 第' . $page . '页')
+@php
+    $pageHeading = '名句列表' . ($tag ? ' - 合集：' . $tag->name : '');
+    $pageTitle = $pageHeading . ($page > 1 ? ' - 第' . $page . '页' : '');
+@endphp
+
+@section('title', $pageTitle)
 
 @section('keywords', '名句列表,' . ($tag ? '合集：' . $tag->name . ',' : ''))
-@section('description', '名句列表' . ($tag ? ' - 合集：' . $tag->name : '') . ' - 第' . $page . '页,')
+@section('description', $pageTitle . ',')
 
 @section('content')
 

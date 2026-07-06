@@ -18,6 +18,7 @@ class MingjuController extends Controller
 
         $tags = Cache::remember('mingju-index-tags', 3600, function () {
             return Tag::query()
+                ->whereIn('id', [160,286,165,20,552,52,202,39,119,30,43,290,77,443,49,72,1,63,113,163,159,55,12,95,28,26,117,188,216,692,3,34,368,224,176,302])
                 ->select('id', 'name')
                 ->orderBy('order')
                 ->limit(36)

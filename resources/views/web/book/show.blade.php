@@ -3,12 +3,40 @@
 @php
     $displayDynasty = $book->dynasty?->name ?: $book->chaodai;
     $displayAuthor = $book->author?->name ?: $book->author_name;
+    $plainContent = trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags($book->content), ENT_QUOTES, 'UTF-8')));
+    $seoDescription = $book->name . ($displayAuthor ? '，' . $displayAuthor . '作品' : '') . '。' . mb_substr($plainContent, 0, 100);
+    $structuredData = [
+        '@context' => 'https://schema.org',
+        '@graph' => [
+            [
+                '@type' => 'BreadcrumbList',
+                'itemListElement' => [
+                    ['@type' => 'ListItem', 'position' => 1, 'name' => '首页', 'item' => route('index')],
+                    ['@type' => 'ListItem', 'position' => 2, 'name' => '古籍', 'item' => route('book.index')],
+                    ['@type' => 'ListItem', 'position' => 3, 'name' => $book->name, 'item' => route('book.show', $book->book_id)],
+                ],
+            ],
+            [
+                '@type' => 'Book',
+                'name' => $book->name,
+                'author' => $displayAuthor ? ['@type' => 'Person', 'name' => $displayAuthor] : null,
+                'inLanguage' => 'zh-CN',
+                'description' => $seoDescription,
+                'url' => route('book.show', $book->book_id),
+            ],
+        ],
+    ];
 @endphp
 
 @section('title', '古籍：' . $book->name . '的全文及简介' . ($displayAuthor ? ' - 作者：' . $displayAuthor : ''))
 
 @section('keywords', $book->name . ',' . ($displayAuthor ? $displayAuthor . ',' : ''))
-@section('description', $book->name . '古籍全文及简介,' . ($displayAuthor ? $displayAuthor . '的古籍,' : ''))
+@section('description', $seoDescription)
+@section('og_description', $seoDescription)
+
+@section('seo')
+<script type="application/ld+json">{!! json_encode($structuredData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}</script>
+@endsection
 
 @section('content')
 <div class="card mb-8">

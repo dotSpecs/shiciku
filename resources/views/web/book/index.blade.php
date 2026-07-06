@@ -1,11 +1,18 @@
 @extends('web.layout')
 
-@section('title', '古籍列表' . ($class ? ' - ' . $class : '') . ($type ? '·' . $type : '') . ' - 第' . $page . '页')
+@php
+    $pageHeading = '古籍列表' . ($class ? ' - ' . $class : '') . ($type ? '·' . $type : '');
+    $pageTitle = $pageHeading . ($page > 1 ? ' - 第' . $page . '页' : '');
+@endphp
+
+@section('title', $pageTitle)
 
 @section('keywords', '古籍列表,' . ($class ? $class . ',' : '') . ($type ? $type . ',' : ''))
-@section('description', '古籍列表' . ($class ? ' - ' . $class : '') . ($type ? '·' . $type : '') . ' - 第' . $page . '页,')
+@section('description', $pageTitle . ',')
 
 @section('content')
+
+<h1 class="card-title mb-4">{{ $pageHeading }}</h1>
 
 @if ($types)
 <div class="card mb-8">
@@ -35,7 +42,7 @@
     $displayAuthor = $book->author?->name ?: $book->author_name;
 @endphp
 <div class="card mb-8">
-    <h1 class="card-title"><a href="{{ route('book.show', ['book_id' => $book->book_id]) }}" class="link">{{ $book->name }}</a></h1>
+    <h2 class="card-title"><a href="{{ route('book.show', ['book_id' => $book->book_id]) }}" class="link">{{ $book->name }}</a></h2>
     <div class="card-content ">
         @if($displayDynasty || $displayAuthor)
         <div class="secondary text-sm mb-3">
