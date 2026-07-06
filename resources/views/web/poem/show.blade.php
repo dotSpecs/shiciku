@@ -23,7 +23,6 @@
                 'author' => $displayAuthor ? ['@type' => 'Person', 'name' => $displayAuthor] : null,
                 'inLanguage' => 'zh-CN',
                 'description' => $seoDescription,
-                'text' => $plainContent,
                 'url' => route('poem.show', poem_slug($poem)),
             ],
         ],

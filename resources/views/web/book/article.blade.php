@@ -145,7 +145,6 @@
                 ],
                 'inLanguage' => 'zh-CN',
                 'description' => $seoDescription,
-                'articleBody' => $plainContent,
                 'url' => $articleUrl,
             ],
         ],
