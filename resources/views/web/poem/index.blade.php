@@ -12,48 +12,46 @@
 
 @section('content')
 
-<h1 class="card-title mb-4">{{ $pageHeading }}</h1>
+<div class="card mb-8">
+    <h1 class="card-title text-2xl mb-3">{{ $pageHeading }}</h1>
 
-<div class="card mb-8 ">
-
-    <h2 class="card-title-sm">合集：</h2>
-
-    <div class="card-content">
-        <div class="flex flex-wrap gap-1">
+    <div class="flex flex-wrap items-start gap-x-3 gap-y-1 border-t border-dashed border-slate-200 pt-2 dark:border-slate-700">
+        <h2 class="shrink-0 w-14 text-sm font-medium secondary leading-7">合集：</h2>
+        <div class="flex flex-1 flex-wrap gap-x-4 gap-y-1">
             @if ($tag && !in_array($tag->id, $tags->pluck('id')->toArray()))
-            <a href="{{ route('poem.index', ['tag_id' => $tag->id]) }}" class="link badge !text-xs primary">
+            <a href="{{ route('poem.index', ['tag_id' => $tag->id]) }}" class="link text-sm leading-7 primary">
                 {{ $tag->name }}
             </a>
             @endif
             @foreach ($tags as $t)
-            <a href="{{ $t->zhuanti ? route('poem.zhuanti', $t->zhuanti->alias) : route('poem.index', ['tag_id' => $t->id]) }}" class="link badge !text-xs {{ ($tag && $tag->id == $t->id) ? 'primary' : '' }}">
+            <a href="{{ $t->zhuanti ? route('poem.zhuanti', $t->zhuanti->alias) : route('poem.index', ['tag_id' => $t->id]) }}" class="link text-sm leading-7 {{ ($tag && $tag->id == $t->id) ? 'primary' : '' }}">
                 {{ $t->name }}
             </a>
             @endforeach
         </div>
     </div>
 
-    <h2 class="card-title-sm mt-2">作者：</h2>
-    <div class="card-content">
-        <div class="flex flex-wrap gap-1">
+    <div class="flex flex-wrap items-start gap-x-3 gap-y-1 border-t border-dashed border-slate-200 pt-2 mt-2 dark:border-slate-700">
+        <h2 class="shrink-0 w-14 text-sm font-medium secondary leading-7">作者：</h2>
+        <div class="flex flex-1 flex-wrap gap-x-4 gap-y-1">
             @if ($author && !in_array($author->author_id, $authors->pluck('author_id')->toArray()))
-            <a href="{{ route('poem.index', ['author_id' => $author->author_id]) }}" class="link badge !text-xs primary">
+            <a href="{{ route('poem.index', ['author_id' => $author->author_id]) }}" class="link text-sm leading-7 primary">
                 {{ $author->name }}
             </a>
             @endif
             @foreach ($authors as $a)
-            <a href="{{ route('poem.index', ['author_id' => $a->author_id]) }}" class="link badge !text-xs {{ ($author && $author->author_id == $a->author_id) ? 'primary' : '' }}">
+            <a href="{{ route('poem.index', ['author_id' => $a->author_id]) }}" class="link text-sm leading-7 {{ ($author && $author->author_id == $a->author_id) ? 'primary' : '' }}">
                 {{ $a->name }}
             </a>
             @endforeach
         </div>
     </div>
 
-    <h2 class="card-title-sm mt-2">朝代：</h2>
-    <div class="card-content">
-        <div class="flex flex-wrap gap-1">
+    <div class="flex flex-wrap items-start gap-x-3 gap-y-1 border-t border-dashed border-slate-200 pt-2 mt-2 dark:border-slate-700">
+        <h2 class="shrink-0 w-14 text-sm font-medium secondary leading-7">朝代：</h2>
+        <div class="flex flex-1 flex-wrap gap-x-4 gap-y-1">
             @foreach ($dynasties as $d)
-            <a data-id="{{ $d->id }}" href="{{ route('poem.index', ['dynasty_id' => $d->id]) }}" class="link badge !text-xs {{ ($dynasty && $dynasty->id == $d->id) ? 'primary' : '' }}">
+            <a data-id="{{ $d->id }}" href="{{ route('poem.index', ['dynasty_id' => $d->id]) }}" class="link text-sm leading-7 {{ ($dynasty && $dynasty->id == $d->id) ? 'primary' : '' }}">
                 {{ $d->name }}
             </a>
             @endforeach

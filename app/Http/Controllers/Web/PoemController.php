@@ -40,7 +40,7 @@ class PoemController extends Controller
                 ->select('id', 'name', 'zhuanti_id')
                 ->with('zhuanti:id,alias')
                 ->orderBy('order')
-                ->limit(22)
+                ->limit(20)
                 ->get();
         });
 

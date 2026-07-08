@@ -164,7 +164,7 @@
 @section('content')
 <div class="card mb-8">
     <div class="card-title flex items-center justify-between @if(!$displayDynasty && !$displayAuthor) !mb-0 @endif">
-        <h1 class="text-xl">{{ $article->book->name }}</h1>
+        <div class="text-xl">{{ $article->book->name }}</div>
         <a href="{{ route('book.show', $article->book->book_id) }}" class="link text-sm primary">返回目录</a>
     </div>
 
@@ -192,10 +192,10 @@
 
 <div class="card @if($bottomSupplements->count() > 0) mb-8 @endif">
     <div class="flex justify-between items-center mb-5">
-        <h2 class="card-title text-xl !mb-0">
+        <h1 class="card-title text-xl !mb-0">
             <span id="poem-title">{{ $article->name }}</span>
             <span class="text-base font-normal text-gray-500">原文</span>
-        </h2>
+        </h1>
         <div class="flex gap-2">
             <span class="badge cursor-pointer" id="readAloudBtn" onclick="handleReadAloud('{{ route('book.audio', ['book_id' => $article->book->book_id, 'article_id' => $article->article_id]) }}')">朗读</span>
             <span class="badge cursor-pointer" onclick="toggleBookPinyin()">拼音</span>

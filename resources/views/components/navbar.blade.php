@@ -25,7 +25,13 @@
         <div id="hs-navbar-top" class="hidden hs-collapse overflow-hidden transition-all duration-300 basis-full grow sm:block" aria-labelledby="hs-navbar-top-collapse">
             <div class="flex flex-col sm:flex-row justify-between w-full">
                 <div class="flex flex-col gap-5 mt-5 sm:flex-row sm:items-center sm:mt-0 sm:ps-10">
-                    <a class="font-medium @if(request()->segment(1) == '') active @endif link" href="{{ route('index') }}">首页</a>
+                    @if(request()->segment(1) == '')
+                    <h1 class="font-medium active link m-0 text-base">
+                        <a href="{{ route('index') }}">首页</a>
+                    </h1>
+                    @else
+                    <a class="font-medium link" href="{{ route('index') }}">首页</a>
+                    @endif
                     <a class="font-medium @if(request()->segment(1) == 'poem') active @endif link" href="{{ route('poem.index') }}">诗词</a>
                     <a class="font-medium @if(request()->segment(1) == 'mingju') active @endif link" href="{{ route('mingju.index') }}">名句</a>
                     <a class="font-medium @if(request()->segment(1) == 'author') active @endif link" href="{{ route('author.index') }}">作者</a>

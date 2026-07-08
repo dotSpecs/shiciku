@@ -13,11 +13,13 @@
 @section('content')
 
 <div class="card mb-8">
-    <h2 class="card-title-sm">朝代：</h2>
-    <div class="card-content">
-        <div class="flex flex-wrap gap-1">
+    <h1 class="card-title text-2xl mb-3">{{ $pageHeading }}</h1>
+
+    <div class="flex flex-wrap items-start gap-x-3 gap-y-1 border-t border-dashed border-slate-200 pt-2 dark:border-slate-700">
+        <h2 class="shrink-0 w-14 text-sm font-medium secondary leading-7">朝代：</h2>
+        <div class="flex flex-1 flex-wrap gap-x-4 gap-y-1">
             @foreach ($dynasties as $d)
-            <a href="{{ route('author.index', ['dynasty_id' => $d->id]) }}" class="link badge {{ ($dynasty && $dynasty->id == $d->id) ? 'primary' : '' }}">
+            <a href="{{ route('author.index', ['dynasty_id' => $d->id]) }}" class="link text-sm leading-7 {{ ($dynasty && $dynasty->id == $d->id) ? 'primary' : '' }}">
                 {{ $d->name }}
             </a>
             @endforeach

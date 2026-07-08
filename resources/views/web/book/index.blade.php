@@ -12,21 +12,19 @@
 
 @section('content')
 
-<h1 class="card-title mb-4">{{ $pageHeading }}</h1>
-
-@if ($types)
 <div class="card mb-8">
+    <h1 class="card-title text-2xl mb-3">{{ $pageHeading }}</h1>
+
+    @if ($types)
     @foreach ($types as $c => $typeList)
     @if (!empty($typeList))
-    <h2 class="card-title-sm @if (!$loop->first) mt-2 @endif">
-        <a href="{{ route('book.index', ['class' => $c]) }}" class="link {{ ($class === $c && !$type) ? 'primary' : '' }}">
-            {{ $c }}
-        </a>：
-    </h2>
-    <div class="card-content">
-        <div class="flex flex-wrap gap-1">
+    <div class="flex flex-wrap items-start gap-x-3 gap-y-1 border-t border-dashed border-slate-200 pt-2 @if (!$loop->first) mt-2 @endif dark:border-slate-700">
+        <h2 class="shrink-0 w-14 text-sm font-medium secondary leading-7">
+            <a href="{{ route('book.index', ['class' => $c]) }}" class="link secondary {{ ($class === $c && !$type) ? 'primary' : '' }}">{{ $c }}</a>：
+        </h2>
+        <div class="flex flex-1 flex-wrap gap-x-4 gap-y-1">
             @foreach ($typeList as $t)
-            <a href="{{ route('book.index', ['class' => $c, 'type' => $t]) }}" class="link badge !text-xs {{ ($class === $c && $type === $t) ? 'primary' : '' }}">
+            <a href="{{ route('book.index', ['class' => $c, 'type' => $t]) }}" class="link text-sm leading-7 {{ ($class === $c && $type === $t) ? 'primary' : '' }}">
                 {{ $t }}
             </a>
             @endforeach
@@ -34,8 +32,9 @@
     </div>
     @endif
     @endforeach
+    @endif
 </div>
-@endif
+
 @foreach ($books as $book)
 @php
     $displayDynasty = $book->dynasty?->name ?: $book->chaodai;
