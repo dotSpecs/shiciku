@@ -160,7 +160,7 @@ class PoemController extends Controller
                 'yin' => $poem->supportsYin(),
                 'yizhu' => $poem->supportsYizhu(),
             ],
-            'audio' => SignedAudioUrl::generate($poem->langsong_url),
+            // 'audio' => SignedAudioUrl::generate($poem->langsong_url),
             'dynasty' => $poem->dynasty ? [
                 'id' => $poem->dynasty->id,
                 'name' => $poem->dynasty->name,

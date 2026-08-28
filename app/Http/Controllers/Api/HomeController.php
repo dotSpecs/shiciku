@@ -50,7 +50,7 @@ class HomeController extends Controller
             'name' => $p->name,
             'favorited' => $this->isFavorited($request, $p),
             'content' => $p->content,
-            'audio' => SignedAudioUrl::generate($p->langsong_url),
+            // 'audio' => SignedAudioUrl::generate($p->langsong_url),
             'author_name' => $p->author_name,
             'chaodai' => $p->chaodai,
             'author' => $p->author ? ['author_id' => $p->author->author_id, 'name' => $p->author->name] : null,
