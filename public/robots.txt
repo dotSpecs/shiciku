@@ -1,4 +1,7 @@
 User-agent: *
 Disallow:
 
+User-agent: bingbot
+Disallow: /poem/search
+
 Sitemap: https://ku.meirishici.com/sitemap/sitemap.xml
